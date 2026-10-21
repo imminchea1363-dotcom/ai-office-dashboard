@@ -142,7 +142,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  main.insertBefore(grid,main.firstChild);main.insertBefore(title,metrics);grid.after(title);title.after(metrics);
  document.querySelector('.db-header h1').textContent='동백꽃이 피는, 우리의 사무실';
  document.querySelector('.db-header p').textContent='직원을 눌러 업무를 확인하고, 각자의 하루를 함께해요.';
- const controls=document.createElement('div');controls.className='db-camera';controls.innerHTML='<span>LIVE OFFICE · v5</span><button id="db-fit" aria-pressed="true">전체 보기</button><button id="db-zoom" aria-pressed="false">＋ 확대 보기</button>';
+ const controls=document.createElement('div');controls.className='db-camera';controls.innerHTML='<span>LIVE OFFICE · v6</span><button id="db-fit" aria-pressed="true">전체 보기</button><button id="db-zoom" aria-pressed="false">＋ 확대 보기</button>';
  document.getElementById('db-viewport').before(controls);
  const viewport=document.getElementById('db-viewport');
  document.getElementById('db-fit').onclick=()=>{viewport.classList.remove('db-zoomed');document.getElementById('db-fit').setAttribute('aria-pressed','true');document.getElementById('db-zoom').setAttribute('aria-pressed','false');};
