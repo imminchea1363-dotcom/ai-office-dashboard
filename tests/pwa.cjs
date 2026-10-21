@@ -49,13 +49,16 @@ const path = require('node:path');
     await page.click('#db-reset');
     // A version update waits for explicit application and preserves names/unrelated caches.
     await page.evaluate(async()=>{await caches.open('personal-cache');await caches.open('dongbaek-pwa-other-scope-keep');});
-    fs.writeFileSync(workerPath,originalWorker.replace(/PREFIX \+ '([^']+)'/,"PREFIX + '$1-test-update'"));
+    const updatedWorker=originalWorker.replace(/PREFIX \+ '([^']+)'/,"PREFIX + '$1-test-update'")+"\nself.addEventListener('message',event=>event.source?.postMessage({type:'test-update-ack',data:event.data}));\n";
+    fs.writeFileSync(workerPath,updatedWorker);
+    assert.equal(await (await context.request.get(new URL('sw.js',base).href)).text(),updatedWorker);
     await page.evaluate(async()=>{const registration=await navigator.serviceWorker.getRegistration();await registration.update();});
     await page.waitForFunction(async()=>Boolean((await navigator.serviceWorker.getRegistration())?.waiting));
     await page.waitForSelector('#db-update-notice:not([hidden])');await page.click('#db-update-notice');await page.waitForSelector('#db-pwa-update');
     await page.evaluate(()=>{
       window.__updateEvents=[];
       navigator.serviceWorker.addEventListener('controllerchange',()=>window.__updateEvents.push('controllerchange'));
+      navigator.serviceWorker.addEventListener('message',event=>window.__updateEvents.push(event.data));
       navigator.serviceWorker.getRegistration().then(r=>{
         const worker=r.waiting;
         worker?.addEventListener('statechange',()=>window.__updateEvents.push(worker.state));
@@ -64,7 +67,7 @@ const path = require('node:path');
     try{await Promise.all([page.waitForNavigation({waitUntil:'domcontentloaded'}),page.click('#db-pwa-update')]);}
     catch(error){console.log('PWA update state:',await page.evaluate(async()=>{
       const r=await navigator.serviceWorker.getRegistration();
-      return {events:window.__updateEvents,waiting:r?.waiting?.state,active:r?.active?.state,controlled:!!navigator.serviceWorker.controller,button:document.querySelector('#db-pwa-update')?.textContent};
+      return {events:window.__updateEvents,waiting:r?.waiting?.state,active:r?.active?.state,controlled:!!navigator.serviceWorker.controller,scope:r?.scope,button:document.querySelector('#db-pwa-update')?.textContent};
     }));throw error;}
     assert.match(await page.locator('#db-roster').textContent(),/동백 대표/);
     const keys=await page.evaluate(()=>caches.keys());assert.ok(keys.includes('personal-cache'));assert.ok(keys.includes('dongbaek-pwa-other-scope-keep'));
