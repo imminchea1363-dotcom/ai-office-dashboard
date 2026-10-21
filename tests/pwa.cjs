@@ -33,6 +33,8 @@ const path = require('node:path');
     await context.setOffline(true);
     await page.goto(base+'?source=homescreen');
     assert.equal(await page.locator('#db-working').textContent(),'2');
+    assert.equal(await page.evaluate(async()=> (await fetch('assets/office-background.png')).status),200);
+    assert.equal(await page.locator('[data-live-background]').count(),1);
     assert.match(await page.locator('#db-roster').textContent(),/동백 대표/);
     await page.click('#db-artwork');await page.waitForFunction(()=>document.querySelector('#db-artwork-dialog img')?.naturalWidth>0);
     await page.locator('#db-artwork-dialog .install-close').click();

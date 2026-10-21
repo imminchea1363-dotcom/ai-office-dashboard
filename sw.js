@@ -5,7 +5,7 @@ const CACHE = PREFIX + 'source-v2';
 const ASSETS = [
   './', './index.html', './pixel-mode.js', './v3.js', './pwa.js',
   './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png',
-  './icons/maskable-512.png', './assets/office-pixel.png'
+  './icons/maskable-512.png', './assets/office-pixel.png', './assets/office-background.png'
 ];
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
