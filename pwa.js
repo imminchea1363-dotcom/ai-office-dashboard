@@ -23,6 +23,7 @@
     return link;
   }
   const updateNotice=create('button','새 화면이 준비됐어요 · 업데이트');updateNotice.id='db-update-notice';updateNotice.className='db-install';updateNotice.hidden=true;updateNotice.style.cssText='position:fixed;right:12px;top:12px;z-index:30;box-shadow:0 3px 15px #223c3140';document.body.append(updateNotice);updateNotice.onclick=()=>{dialog.showModal();view();};
+  const reloadUpdatedApp=()=>{if(!applyingUpdate)return;applyingUpdate=false;location.reload();};
   function view(){
     updateNotice.hidden=!registration?.waiting;
     trigger.textContent=registration?.waiting?'↻ 새 버전 적용':standalone()?'▣ 앱 설치 정보':installedThisSession?'✓ 설치 완료':'▣ 홈 화면에 설치';
@@ -54,7 +55,14 @@
     }
     const status=create('p',fileLike?'설치용 주소 필요':!secure?'설치 가능한 연결 필요':ready?'✓ 오프라인 준비 완료':checking?'오프라인 실행 파일을 준비하고 있어요…':'오프라인 준비 안 됨','install-status');status.id='db-offline-status';status.setAttribute('role','status');dialog.append(status);
     if(error)dialog.append(create('p',error,'install-error'));
-    if(registration?.waiting){const update=create('button','새 버전 적용');update.id='db-pwa-update';update.onclick=()=>{applyingUpdate=true;registration.waiting?.postMessage({type:'SKIP_WAITING'});};dialog.append(update);dialog.append(create('p','새 버전을 적용하면 현재 시뮬레이션이 초기화됩니다. 저장한 이름은 유지됩니다.','install-note'));}
+    if(registration?.waiting){const update=create('button','새 버전 적용');update.id='db-pwa-update';update.onclick=()=>{
+      const worker=registration.waiting;if(!worker){view();return;}
+      applyingUpdate=true;update.disabled=true;update.textContent='새 버전을 적용하고 있어요…';
+      // Some browsers deliver activation before controllerchange. Either event
+      // may finish this user-requested update, but reload only once.
+      worker.addEventListener('statechange',()=>{if(worker.state==='activated')reloadUpdatedApp();});
+      worker.postMessage({type:'SKIP_WAITING'});
+    };dialog.append(update);dialog.append(create('p','새 버전을 적용하면 현재 시뮬레이션이 초기화됩니다. 저장한 이름은 유지됩니다.','install-note'));}
     if(secure&&!ready&&!checking){const retry=create('button','설치 준비 다시 확인');retry.id='db-pwa-retry';retry.onclick=prepare;dialog.append(retry);}
   }
   async function verifyCache(){
@@ -92,7 +100,7 @@
   dialog.addEventListener('click',event=>{if(event.target!==dialog)return;const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)dialog.close();});
   window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();promptEvent=event;view();});
   window.addEventListener('appinstalled',()=>{installedThisSession=true;promptEvent=null;view();});
-  if(secure&&'serviceWorker' in navigator)navigator.serviceWorker.addEventListener('controllerchange',()=>{if(applyingUpdate)location.reload();});
+  if(secure&&'serviceWorker' in navigator)navigator.serviceWorker.addEventListener('controllerchange',reloadUpdatedApp);
   window.addEventListener('online',()=>{if(!ready)prepare();});
   if(secure&&'serviceWorker' in navigator)prepare();
   else if(secure)error='이 브라우저는 오프라인 앱 설치를 지원하지 않습니다. 최신 Chrome에서 열어 주세요.';

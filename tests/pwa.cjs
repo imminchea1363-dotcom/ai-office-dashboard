@@ -53,7 +53,19 @@ const path = require('node:path');
     await page.evaluate(async()=>{const registration=await navigator.serviceWorker.getRegistration();await registration.update();});
     await page.waitForFunction(async()=>Boolean((await navigator.serviceWorker.getRegistration())?.waiting));
     await page.waitForSelector('#db-update-notice:not([hidden])');await page.click('#db-update-notice');await page.waitForSelector('#db-pwa-update');
-    await Promise.all([page.waitForNavigation(),page.click('#db-pwa-update')]);
+    await page.evaluate(()=>{
+      window.__updateEvents=[];
+      navigator.serviceWorker.addEventListener('controllerchange',()=>window.__updateEvents.push('controllerchange'));
+      navigator.serviceWorker.getRegistration().then(r=>{
+        const worker=r.waiting;
+        worker?.addEventListener('statechange',()=>window.__updateEvents.push(worker.state));
+      });
+    });
+    try{await Promise.all([page.waitForNavigation({waitUntil:'domcontentloaded'}),page.click('#db-pwa-update')]);}
+    catch(error){console.log('PWA update state:',await page.evaluate(async()=>{
+      const r=await navigator.serviceWorker.getRegistration();
+      return {events:window.__updateEvents,waiting:r?.waiting?.state,active:r?.active?.state,controlled:!!navigator.serviceWorker.controller,button:document.querySelector('#db-pwa-update')?.textContent};
+    }));throw error;}
     assert.match(await page.locator('#db-roster').textContent(),/동백 대표/);
     const keys=await page.evaluate(()=>caches.keys());assert.ok(keys.includes('personal-cache'));assert.ok(keys.includes('dongbaek-pwa-other-scope-keep'));
     const scopePrefix='dongbaek-pwa-'+encodeURIComponent(new URL(base).pathname)+'-';assert.equal(keys.filter(k=>k.startsWith(scopePrefix)).length,1);
