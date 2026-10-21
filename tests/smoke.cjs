@@ -1,0 +1,44 @@
+const {chromium}=require('playwright');
+const a=require('node:assert/strict');
+(async()=>{
+ const options={args:['--no-sandbox']};
+ if(process.env.CHROMIUM_PATH)options.executablePath=process.env.CHROMIUM_PATH;
+ else if(require('node:fs').existsSync('/usr/bin/chromium'))options.executablePath='/usr/bin/chromium';
+ const browser=await chromium.launch(options);
+ const baseURL=process.env.APP_TEST_URL||'http://127.0.0.1:3000';
+ try{
+ const page=await browser.newPage({viewport:{width:1600,height:1180}});
+ const errors=[],external=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(!r.url().startsWith(baseURL))external.push(r.url());});
+ await page.clock.install();await page.goto(baseURL);
+ const actor=id=>page.locator(`#db-actors [data-worker="${id}"]`);
+ const roster=id=>page.locator(`#db-roster [data-worker="${id}"]`);
+ const go=async view=>page.locator(`#db-areas [data-view="${view}"]`).click();
+ a.equal(await page.locator('#db-world').getAttribute('viewBox'),'0 0 1350 975');
+ a.equal(await actor(1).getAttribute('data-pose'),'work');a.equal(await actor(2).getAttribute('data-gender'),'female');
+ a.equal(await actor(3).count(),0);a.equal(await actor(4).count(),0);
+ a.match(await roster(3).textContent(),/디자인 · 임민채공주/);a.match(await roster(2).textContent(),/자료조사 · 임채리대리/);
+ await go('gym');a.equal(await actor(3).getAttribute('data-gender'),'female');a.equal(await actor(3).getAttribute('data-pose'),'gym');a.equal(await actor(1).count(),0);
+ await go('pantry');a.equal(await actor(4).getAttribute('data-pose'),'coffee');a.equal(await actor(1).count(),0);
+ await go('roof');a.equal(await page.locator('.db-dog-route').count(),1);for(const t of ['동백이 집','밥그릇','물그릇'])a.match(await page.locator('#db-furniture').textContent(),new RegExp(t));
+ await go('lobby');a.equal(await actor(-1).getAttribute('data-gender'),'female');a.equal(await actor(-2).count(),1);a.equal(await page.locator('.db-mop').count(),1);a.equal(await actor(1).count(),0);a.match(await page.locator('#db-help').textContent(),/업무 책상이 없습니다/);
+ await page.click('#db-finish');a.match(await page.locator('#db-title').textContent(),/3F/);a.equal(await actor(1).count(),1);
+ await page.clock.runFor(1800);a.equal(await actor(1).getAttribute('data-pose'),'walk');
+ await page.clock.runFor(4000);a.match(await page.locator('#db-title').textContent(),/엘리베이터/);a.match(await page.locator('#db-cabin-display').textContent(),/3F → 4F/);
+ const firstCabin=await page.locator('#db-cabin').getAttribute('transform');await page.clock.runFor(1000);a.notEqual(await page.locator('#db-cabin').getAttribute('transform'),firstCabin);
+ await page.clock.runFor(3000);a.match(await page.locator('#db-title').textContent(),/4F/);a.equal(await actor(0).count(),1);a.equal(await actor(1).count(),1);
+ await page.clock.runFor(3400);a.equal(await actor(1).getAttribute('data-pose'),'report');a.match(await page.locator('#db-steps .current').textContent(),/결과 보고/);
+ await page.clock.runFor(6000);a.equal(await page.locator('#db-completed').textContent(),'1');a.match(await roster(1).textContent(),/탕비실/);
+ await go('pantry');a.equal(await actor(1).count(),1);await go('office');a.equal(await actor(1).count(),0);a.equal(await actor(2).count(),1);
+ await page.click('#db-ask');await page.clock.runFor(20000);a.equal(await page.locator('#db-question-count').textContent(),'1건');a.equal(await actor(2).count(),1);await page.locator('[data-answer-v3]').click();a.equal(await page.locator('#db-question-count').textContent(),'0건');a.equal(await actor(2).getAttribute('data-pose'),'work');
+ await page.click('#db-leave');await page.clock.runFor(11000);a.match(await page.locator('#db-title').textContent(),/1F/);a.equal(await actor(1).getAttribute('data-pose'),'wave');a.match(await page.locator('#db-actors').textContent(),/安|안녕히/);
+ await page.clock.runFor(4000);a.match(await roster(1).textContent(),/퇴근/);a.equal(await actor(1).count(),0);
+ await page.click('#db-spawn');a.equal(await actor(1).getAttribute('data-pose'),'wave');await page.clock.runFor(14000);a.equal(await actor(1).getAttribute('data-pose'),'work');a.equal(await page.locator('#db-total').textContent(),'4');
+ await page.click('#db-finish');await page.click('#db-pause');await page.clock.runFor(5300);a.match(await page.locator('#db-live').textContent(),/확인 중/);const frozen=await page.locator('#db-moving-person').innerHTML();await page.clock.runFor(3000);a.equal(await page.locator('#db-moving-person').innerHTML(),frozen);await page.click('#db-pause');await page.clock.runFor(20000);a.equal(await page.locator('#db-completed').textContent(),'2');
+ await page.click('#db-reset');await go('gym');await actor(3).click();await page.locator('[data-worker-action="work"]').click();a.equal(await actor(3).getAttribute('data-pose'),'work');
+ await page.click('#db-settings');await page.fill('#db-name-2','임채리대리');await page.locator('#db-name-form button').click();
+ await page.setViewportSize({width:390,height:844});a.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await go('lobby');a.equal(await page.locator('#db-viewport').evaluate(el=>el.scrollWidth>el.clientWidth),true);
+ await page.emulateMedia({reducedMotion:'reduce'});await go('roof');a.equal(await page.locator('.db-dog-route').evaluate(el=>getComputedStyle(el).animationName),'none');
+ a.deepEqual(errors,[]);a.deepEqual(external,[]);
+ console.log('PASS: 1.5x world, job/name labels, female characters, seated work, unique locations, reception/cleaner, rooftop dog, entire 3F-to-4F report, moving cabin, questions, departure/arrival greetings, freeze/resume, work assignment, naming, mobile panning, reduced motion, no JS errors/external requests');
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exit(1);});
