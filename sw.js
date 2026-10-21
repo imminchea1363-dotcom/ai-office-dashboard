@@ -1,11 +1,11 @@
 /* Build replaces the cache suffix with a content hash. */
 const ROOT = new URL('./', self.location.href);
 const PREFIX = 'dongbaek-pwa-' + encodeURIComponent(ROOT.pathname) + '-';
-const CACHE = PREFIX + '270d05de20174165';
+const CACHE = PREFIX + '5021a031d7e219f3';
 const ASSETS = [
-  './', './index.html', './pixel-mode.js', './v3.js', './pwa.js', './radio.js',
+  './', './index.html', './characters.js', './pixel-mode.js', './v3.js', './pwa.js', './radio.js',
   './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png',
-  './icons/maskable-512.png', './assets/office-pixel.png', './assets/office-background.png'
+  './icons/maskable-512.png', './assets/office-pixel.png', './assets/office-background.png','./assets/lobby-background.png','./assets/gym-background.png','./assets/characters-standing.png','./assets/characters-working.png'
 ];
 self.addEventListener('install', event => {
   event.waitUntil((async () => {

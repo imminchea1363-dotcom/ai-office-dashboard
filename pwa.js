@@ -22,8 +22,10 @@
     } else {link.href=location.href;link.target='_blank';link.rel='noopener';}
     return link;
   }
+  const updateNotice=create('button','새 화면이 준비됐어요 · 업데이트');updateNotice.id='db-update-notice';updateNotice.className='db-install';updateNotice.hidden=true;updateNotice.style.cssText='position:fixed;right:12px;top:12px;z-index:30;box-shadow:0 3px 15px #223c3140';document.body.append(updateNotice);updateNotice.onclick=()=>{dialog.showModal();view();};
   function view(){
-    trigger.textContent=standalone()?'▣ 앱 설치 정보':installedThisSession?'✓ 설치 완료':registration?.waiting?'↻ 새 버전 적용':'▣ 홈 화면에 설치';
+    updateNotice.hidden=!registration?.waiting;
+    trigger.textContent=registration?.waiting?'↻ 새 버전 적용':standalone()?'▣ 앱 설치 정보':installedThisSession?'✓ 설치 완료':'▣ 홈 화면에 설치';
     if(!dialog.open)return;
     dialog.replaceChildren();
     const close=create('button','×','install-close');close.setAttribute('aria-label','닫기');close.onclick=()=>dialog.close();
@@ -57,7 +59,7 @@
   }
   async function verifyCache(){
     const root=new URL('./',location.href);
-    const paths=['index.html','pixel-mode.js','v3.js','radio.js','pwa.js','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png','icons/maskable-512.png','assets/office-pixel.png','assets/office-background.png'];
+    const paths=['index.html','characters.js','pixel-mode.js','v3.js','radio.js','pwa.js','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png','icons/maskable-512.png','assets/office-pixel.png','assets/office-background.png','assets/lobby-background.png','assets/gym-background.png','assets/characters-standing.png','assets/characters-working.png'];
     const prefix='dongbaek-pwa-'+encodeURIComponent(root.pathname)+'-';
     ready=false;
     for(const key of (await caches.keys()).filter(key=>key.startsWith(prefix))){
