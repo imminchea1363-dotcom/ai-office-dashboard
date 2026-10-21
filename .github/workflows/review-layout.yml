@@ -2,14 +2,14 @@ name: Review office layout
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
 
 jobs:
   browser-review:
-    if: startsWith(github.head_ref, 'codex/office-seating-')
+    if: startsWith(github.head_ref, 'codex/')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -38,25 +38,26 @@ jobs:
       - name: Capture screens and run browser checks
         run: node scripts/verify-layout.cjs
       - name: Confirm the published review release
+        if: github.event.action == 'ready_for_review'
         run: node scripts/verify-published.cjs
       - name: Upload review screens
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: dongbaek-v6.1-screens
+          name: dongbaek-v6.2-screens
           path: review/previews/
           retention-days: 14
       - name: Upload install files
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: dongbaek-v6.1-install
+          name: dongbaek-v6.2-install
           path: review/dist/*.zip
           retention-days: 14
       - name: Upload standalone HTML
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: dongbaek-v6.1-html
+          name: dongbaek-v6.2-html
           path: review/dist/*.html
           retention-days: 14
