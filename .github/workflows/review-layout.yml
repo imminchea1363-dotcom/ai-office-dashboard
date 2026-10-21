@@ -37,13 +37,24 @@ jobs:
           npm run export
       - name: Capture screens and run browser checks
         run: node scripts/verify-layout.cjs
-      - name: Upload review screens and install files
+      - name: Upload review screens
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: dongbaek-v6.1-browser-review
-          path: |
-            review/previews/
-            review/dist/*.html
-            review/dist/*.zip
+          name: dongbaek-v6.1-screens
+          path: review/previews/
+          retention-days: 14
+      - name: Upload install files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dongbaek-v6.1-install
+          path: review/dist/*.zip
+          retention-days: 14
+      - name: Upload standalone HTML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dongbaek-v6.1-html
+          path: review/dist/*.html
           retention-days: 14

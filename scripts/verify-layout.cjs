@@ -33,6 +33,7 @@ const server = http.createServer((req, res) => {
     for (const [name, url] of [['before',host+'/ai-office-dashboard/'],['after',base]]) {
       const context = await browser.newContext({viewport:{width:1600,height:1180},reducedMotion:'reduce',serviceWorkers:'block'});
       const page = await context.newPage();
+      if (name === 'after') await page.clock.install();
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
       page.on('response', response => {if(response.status()>=400) errors.push(response.status()+' '+response.url());});
@@ -41,6 +42,11 @@ const server = http.createServer((req, res) => {
         await page.locator('#db-areas [data-view='+scene+']').click();
         await page.waitForFunction(() => [...document.querySelectorAll('[data-painted-sprite] img')].every(img=>img.complete&&img.naturalWidth>0));
         await page.locator('#db-world').screenshot({path:path.join(previews, name+'-'+scene+'.png')});
+        if (name === 'after') {
+          const jpeg = await page.locator('#db-world').screenshot({type:'jpeg',quality:65});
+          fs.writeFileSync(path.join(previews,'after-'+scene+'.jpg'),jpeg);
+          console.log('REVIEW_IMAGE:'+JSON.stringify({scene,base64:jpeg.toString('base64')}));
+        }
       }
       if (name === 'after') {
         assert.equal(await page.locator('[data-character="black-french-bulldog"][data-pose="sit"]').count(),1);
@@ -50,7 +56,6 @@ const server = http.createServer((req, res) => {
         assert.equal(await page.locator('[data-character="black-french-bulldog"]').count(),1);
         assert.equal(await page.locator('.db-dog-seated').count(),0);
         // Fill the pantry through real employee actions, including two arrivals.
-        await page.clock.install();
         for (let i=0;i<2;i++) {await page.click('#db-spawn');await page.clock.runFor(16000);}
         const employees = await page.evaluate(()=>DongbaekOffice.employees());
         assert.equal(employees.length,6);
