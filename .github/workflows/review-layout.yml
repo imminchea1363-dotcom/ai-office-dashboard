@@ -37,6 +37,8 @@ jobs:
           npm run export
       - name: Capture screens and run browser checks
         run: node scripts/verify-layout.cjs
+      - name: Confirm the published review release
+        run: node scripts/verify-published.cjs
       - name: Upload review screens
         if: always()
         uses: actions/upload-artifact@v4
