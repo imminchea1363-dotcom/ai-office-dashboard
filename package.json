@@ -5,10 +5,11 @@
   "description": "AI 사무실 시뮬레이션 대시보드",
   "scripts": {
     "start": "python3 -m http.server 3000 --bind 0.0.0.0",
-    "check": "node --check v3.js && node --check pixel-mode.js && node --check pwa.js && node --check sw.js",
+    "check": "node --check v3.js && node --check pixel-mode.js && node --check pwa.js && node --check sw.js && node --check radio.js",
     "export": "python3 scripts/export-standalone.py",
     "test:browser": "node tests/smoke.cjs",
     "build:pwa": "python3 scripts/build-pwa.py",
+    "test:radio": "node tests/radio.cjs",
     "test:pwa": "node tests/pwa.cjs"
   }
 }

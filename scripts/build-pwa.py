@@ -7,7 +7,7 @@ import zipfile
 
 root = Path(__file__).resolve().parents[1]
 output = root / 'dist' / 'dongbaek-pwa'
-files = ['index.html', 'pixel-mode.js', 'v3.js', 'pwa.js', 'manifest.webmanifest',
+files = ['index.html', 'pixel-mode.js', 'v3.js', 'radio.js', 'pwa.js', 'manifest.webmanifest',
          'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png',
          'assets/office-pixel.png','assets/office-background.png']
 output.mkdir(parents=True, exist_ok=True)

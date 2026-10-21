@@ -3,7 +3,7 @@ const ROOT = new URL('./', self.location.href);
 const PREFIX = 'dongbaek-pwa-' + encodeURIComponent(ROOT.pathname) + '-';
 const CACHE = PREFIX + 'source-v2';
 const ASSETS = [
-  './', './index.html', './pixel-mode.js', './v3.js', './pwa.js',
+  './', './index.html', './pixel-mode.js', './v3.js', './pwa.js', './radio.js',
   './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png',
   './icons/maskable-512.png', './assets/office-pixel.png', './assets/office-background.png'
 ];

@@ -57,7 +57,7 @@
   }
   async function verifyCache(){
     const root=new URL('./',location.href);
-    const paths=['index.html','pixel-mode.js','v3.js','pwa.js','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png','icons/maskable-512.png','assets/office-pixel.png','assets/office-background.png'];
+    const paths=['index.html','pixel-mode.js','v3.js','radio.js','pwa.js','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png','icons/maskable-512.png','assets/office-pixel.png','assets/office-background.png'];
     const prefix='dongbaek-pwa-'+encodeURIComponent(root.pathname)+'-';
     ready=false;
     for(const key of (await caches.keys()).filter(key=>key.startsWith(prefix))){
