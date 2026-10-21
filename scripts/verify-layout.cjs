@@ -1,0 +1,84 @@
+/* Local-only browser verification; writes previews only in this review copy. */
+const fs = require('node:fs');
+const path = require('node:path');
+const http = require('node:http');
+const assert = require('node:assert/strict');
+const {execFile} = require('node:child_process');
+const {promisify} = require('node:util');
+const {chromium} = require('playwright');
+const run = promisify(execFile);
+const root = path.resolve(__dirname, '..');
+const workspace = path.dirname(root);
+const previews = path.join(root, 'previews');
+fs.mkdirSync(previews, {recursive: true});
+const server = http.createServer((req, res) => {
+  const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+  let file = path.resolve(workspace, '.' + pathname);
+  if (!file.startsWith(workspace + path.sep)) {res.writeHead(403).end(); return;}
+  if (fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, 'index.html');
+  if (!fs.existsSync(file)) {res.writeHead(404).end(); return;}
+  res.setHeader('Content-Type', ({'.html':'text/html; charset=utf-8','.js':'application/javascript','.png':'image/png','.webmanifest':'application/manifest+json'})[path.extname(file)] || 'text/plain');
+  res.setHeader('Cache-Control', 'no-store');
+  fs.createReadStream(file).pipe(res);
+});
+(async () => {
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  const host = 'http://127.0.0.1:' + server.address().port;
+  const base = host + '/' + path.basename(root) + '/';
+  const browser = await chromium.launch({executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', args:['--no-sandbox','--disable-dev-shm-usage']});
+  try {
+    for (const [name, url] of [['before',host+'/ai-office-dashboard/'],['after',base]]) {
+      const context = await browser.newContext({viewport:{width:1600,height:1180},reducedMotion:'reduce',serviceWorkers:'block'});
+      const page = await context.newPage();
+      const errors = [];
+      page.on('pageerror', error => errors.push(error.message));
+      page.on('response', response => {if(response.status()>=400) errors.push(response.status()+' '+response.url());});
+      await page.goto(url);
+      for (const scene of ['director','pantry','office']) {
+        await page.locator('#db-areas [data-view='+scene+']').click();
+        await page.waitForFunction(() => [...document.querySelectorAll('[data-painted-sprite] img')].every(img=>img.complete&&img.naturalWidth>0));
+        await page.locator('#db-world').screenshot({path:path.join(previews, name+'-'+scene+'.png')});
+      }
+      if (name === 'after') {
+        assert.equal(await page.locator('[data-character="black-french-bulldog"][data-pose="sit"]').count(),1);
+        assert.equal(await page.locator('.db-dog-route').count(),0);
+        assert.match(await page.locator('#db-occupancy').textContent(),/동백이 1마리/);
+        await page.locator('#db-areas [data-view=roof]').click();
+        assert.equal(await page.locator('[data-character="black-french-bulldog"]').count(),1);
+        assert.equal(await page.locator('.db-dog-seated').count(),0);
+        // Fill the pantry through real employee actions, including two arrivals.
+        await page.clock.install();
+        for (let i=0;i<2;i++) {await page.click('#db-spawn');await page.clock.runFor(16000);}
+        const employees = await page.evaluate(()=>DongbaekOffice.employees());
+        assert.equal(employees.length,6);
+        for (const employee of employees) {
+          await page.locator('#db-roster [data-worker="'+employee.id+'"]').click();
+          await page.locator('[data-worker-action=pantry]').click();
+        }
+        await page.locator('#db-areas [data-view=pantry]').click();
+        assert.equal(await page.locator('#db-actors [data-pose=coffee]').count(),6);
+        assert.equal(await page.locator('[data-seat-support=stool]').count(),4);
+        const placements = await page.locator('#db-actors [data-worker]').evaluateAll(nodes=>nodes.map(node=>node.parentElement.getAttribute('transform')));
+        assert.equal(new Set(placements).size,6);
+        await page.locator('#db-world').screenshot({path:path.join(previews,'after-pantry-six.png')});
+        await page.click('#db-reset');
+        await page.setViewportSize({width:390,height:844});
+        for (const scene of ['director','pantry','office']) {
+          await page.locator('#db-areas [data-view='+scene+']').click();
+          assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+          await page.locator('#db-viewport').screenshot({path:path.join(previews,'mobile-'+scene+'.png')});
+        }
+      }
+      assert.deepEqual(errors,[]);
+      await context.close();
+    }
+    console.log('PASS layouts: before/after screenshots, seated garden dog, one dog per view, six distinct pantry seats with supports, mobile width, no JS/resource errors');
+  } finally {await browser.close();}
+  for (const test of ['smoke.cjs','scene-details.cjs','radio.cjs','pwa.cjs','recovery.cjs']) {
+    const result = await run(process.execPath,[path.join(root,'tests',test)],{cwd:root,env:{...process.env,APP_TEST_URL:base,PWA_TEST_URL:base+'dist/dongbaek-pwa/'},timeout:120000,maxBuffer:1024*1024});
+    process.stdout.write(result.stdout);
+  }
+})().catch(error=>{console.error(error);process.exitCode=1;}).finally(()=>server.close());

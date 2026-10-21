@@ -1,0 +1,49 @@
+name: Review office layout
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  browser-review:
+    if: startsWith(github.head_ref, 'codex/office-seating-')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: review
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: review
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser test tools
+        run: |
+          npm install --no-save --package-lock=false playwright@1.62.1
+          npx playwright install --with-deps chromium
+          echo "CHROMIUM_PATH=$(node -p 'require("playwright").chromium.executablePath()')" >> "$GITHUB_ENV"
+      - name: Preserve a baseline for the screenshots
+        run: git worktree add --detach ../ai-office-dashboard 8d7a0ee1a415d4634d5efc99159fff2cd445bf92
+      - name: Check and build review files
+        run: |
+          npm run check
+          npm run build:pwa
+          npm run export
+      - name: Capture screens and run browser checks
+        run: node scripts/verify-layout.cjs
+      - name: Upload review screens and install files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dongbaek-v6.1-browser-review
+          path: |
+            review/previews/
+            review/dist/*.html
+            review/dist/*.zip
+          retention-days: 14
