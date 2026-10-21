@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {chromium} = require('playwright');
 const root = path.resolve(__dirname, '..');
+const version = JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).version.split('.').slice(0,2).join('.');
 const base = 'https://imminchea1363-dotcom.github.io/ai-office-dashboard/';
 const latest = fs.readFileSync(path.join(root,'dist/dongbaek-pwa/latest.html'),'utf8');
 const release = latest.match(/releases\/([^/]+)\//)[1];
@@ -34,11 +35,11 @@ const delay = ms => new Promise(resolve=>setTimeout(resolve,ms));
     page.on('response',response=>{if(response.status()>=400) errors.push(response.status()+' '+response.url());});
     await page.goto(base+'latest.html');
     await page.waitForURL(target);
-    assert.match(await page.title(),/v6\.1/);
+    assert.ok((await page.title()).includes('v'+version));
     for(const scene of ['office','director','pantry']){
       await page.locator('#db-areas [data-view='+scene+']').click();
       await page.waitForFunction(()=>[...document.querySelectorAll('[data-painted-sprite] img')].every(img=>img.complete&&img.naturalWidth>0));
-      if(scene==='office') assert.equal(await page.locator('.db-dog-seated').count(),1);
+      if(scene==='office'){assert.equal(await page.locator('.db-dog-seated').count(),1);assert.equal(await page.locator('[data-ai-service-link]').count(),8);}
       const bytes=await page.locator('#db-world').screenshot({type:'jpeg',quality:65});
       fs.writeFileSync(path.join(root,'previews','published-'+scene+'.jpg'),bytes);
       console.log('PUBLISHED_IMAGE:'+JSON.stringify({scene,base64:bytes.toString('base64')}));
