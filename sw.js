@@ -1,7 +1,7 @@
 /* Build replaces the cache suffix with a content hash. */
 const ROOT = new URL('./', self.location.href);
 const PREFIX = 'dongbaek-pwa-' + encodeURIComponent(ROOT.pathname) + '-';
-const CACHE = PREFIX + 'c9dfe6ed2e5bec23';
+const CACHE = PREFIX + '5c3c3b6e038d84b6';
 const ASSETS = [
   './', './index.html', './characters.js', './pixel-mode.js', './v3.js', './pwa.js', './radio.js', './gym-music.js',
   './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png',
