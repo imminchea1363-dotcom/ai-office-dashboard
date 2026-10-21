@@ -59,7 +59,7 @@
   }
   async function verifyCache(){
     const root=new URL('./',location.href);
-    const paths=['index.html','characters.js','pixel-mode.js','v3.js','radio.js','pwa.js','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png','icons/maskable-512.png','assets/office-pixel.png','assets/office-background.png','assets/lobby-background.png','assets/gym-background.png','assets/characters-standing.png','assets/characters-working.png'];
+    const paths=['index.html','characters.js','pixel-mode.js','v3.js','radio.js','gym-music.js','pwa.js','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png','icons/maskable-512.png','assets/office-pixel.png','assets/office-background.png','assets/lobby-background.png','assets/gym-background.png','assets/characters-standing.png','assets/characters-working.png','assets/characters-gym.png','assets/characters-cleaner.png','assets/characters-coffee.png'];
     const prefix='dongbaek-pwa-'+encodeURIComponent(root.pathname)+'-';
     ready=false;
     for(const key of (await caches.keys()).filter(key=>key.startsWith(prefix))){
@@ -87,7 +87,7 @@
   }
   const artworkButton=create('button','▦ 사무실 이미지');artworkButton.className='db-install';artworkButton.id='db-artwork';artworkButton.style.background='#eee1bc';document.querySelector('.db-secondary').prepend(artworkButton);
   const artDialog=create('dialog');artDialog.className='db-install-panel';artDialog.style.maxWidth='1100px';artDialog.id='db-artwork-dialog';document.body.append(artDialog);
-  artworkButton.onclick=()=>{artDialog.replaceChildren();const close=create('button','×','install-close');close.setAttribute('aria-label','닫기');close.onclick=()=>artDialog.close();const title=create('h2','주식회사 동백 · 픽셀 오피스');const image=create('img');image.alt='나무 바닥과 초록색 가구, AI 동료들, 검정 프렌치불독 동백이가 있는 주식회사 동백 픽셀 사무실 일러스트';image.src=window.DongbaekArtwork||new URL('assets/office-pixel.png',location.href).href;image.style.cssText='display:block;width:100%;height:auto;image-rendering:pixelated';image.onerror=()=>{image.replaceWith(create('p','그림 파일을 열 수 없습니다. 설치용 폴더의 assets 파일을 확인해 주세요.'));};artDialog.append(close,title,image,create('p','이 그림은 사무실 콘셉트 일러스트입니다. 직원의 실제 시뮬레이션 위치는 움직이는 사무실 화면에서 확인하세요.','install-note'));artDialog.showModal();};
+  artworkButton.onclick=()=>{artDialog.replaceChildren();const close=create('button','×','install-close');close.setAttribute('aria-label','닫기');close.onclick=()=>artDialog.close();const title=create('h2','주식회사 동백 · 픽셀 오피스');const image=create('img');image.alt='정원과 꽃·식물을 줄인 주식회사 동백 사무실 인테리어';image.src=window.DongbaekBackground||new URL('assets/office-background.png',location.href).href;image.style.cssText='display:block;width:100%;height:auto;image-rendering:pixelated';image.onerror=()=>{image.replaceWith(create('p','그림 파일을 열 수 없습니다. 설치용 폴더의 assets 파일을 확인해 주세요.'));};artDialog.append(close,title,image,create('p','사무실 인테리어 전체 보기입니다. 직원과 동백이는 움직이는 사무실 화면에서 확인하세요.','install-note'));artDialog.showModal();};
   trigger.onclick=()=>{dialog.showModal();view();};
   dialog.addEventListener('click',event=>{if(event.target!==dialog)return;const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)dialog.close();});
   window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();promptEvent=event;view();});

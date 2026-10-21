@@ -35,7 +35,7 @@ const path = require('node:path');
     assert.equal(await page.locator('#db-working').textContent(),'2');
     assert.equal(await page.evaluate(async()=> (await fetch('assets/office-background.png')).status),200);
     assert.equal(await page.locator('[data-live-background]').count(),1);
-    for(const asset of ['characters-standing.png','characters-working.png','gym-background.png','lobby-background.png'])assert.equal(await page.evaluate(async name=>(await fetch('assets/'+name)).status,asset),200);
+    for(const asset of ['characters-standing.png','characters-working.png','characters-gym.png','characters-cleaner.png','characters-coffee.png','gym-background.png','lobby-background.png'])assert.equal(await page.evaluate(async name=>(await fetch('assets/'+name)).status,asset),200);
     await page.waitForFunction(()=>[...document.querySelectorAll('[data-painted-sprite] img')].every(img=>img.naturalWidth>0));
     for(const room of ['gym','lobby']){await page.locator('#db-areas [data-view='+room+']').click();assert.equal(await page.locator('[data-room-art='+room+']').count(),1);}
     await page.locator('#db-areas [data-view=office]').click();

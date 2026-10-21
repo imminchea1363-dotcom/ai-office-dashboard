@@ -1,14 +1,16 @@
 {
   "name": "dongbaek-office-dashboard",
-  "version": "5.0.0",
+  "version": "6.0.0",
   "private": true,
   "description": "AI 사무실 시뮬레이션 대시보드",
   "scripts": {
     "start": "python3 -m http.server 3000 --bind 0.0.0.0",
-    "check": "node --check v3.js && node --check pixel-mode.js && node --check pwa.js && node --check sw.js && node --check radio.js && node --check characters.js",
+    "check": "node --check v3.js && node --check pixel-mode.js && node --check pwa.js && node --check sw.js && node --check radio.js && node --check characters.js && node --check gym-music.js",
     "export": "python3 scripts/export-standalone.py",
     "test:browser": "node tests/smoke.cjs",
     "build:pwa": "python3 scripts/build-pwa.py",
+    "test:scenes": "node tests/scene-details.cjs",
+    "test:recovery": "node tests/recovery.cjs",
     "test:radio": "node tests/radio.cjs",
     "test:pwa": "node tests/pwa.cjs"
   }
