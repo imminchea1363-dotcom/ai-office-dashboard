@@ -1,5 +1,5 @@
 const {chromium}=require('playwright');const a=require('node:assert/strict');
-(async()=>{const b=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});try{const p=await b.newPage({viewport:{width:390,height:844}});const errors=[];p.on('pageerror',e=>errors.push(e.message));await p.clock.install();await p.goto(process.env.APP_TEST_URL||'http://localhost:3000');
+(async()=>{const b=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});try{const p=await b.newPage({viewport:{width:390,height:844}});const errors=[];p.on('pageerror',e=>errors.push(e.message));await p.clock.install();await p.goto(process.env.APP_TEST_URL||'http://localhost:3000');
 await p.click('#db-radio-collect');a.equal(await p.locator('.db-radio-item').count(),4);
 await p.locator('[data-radio-play]').first().click();a.match(await p.locator('#db-radio-status').textContent(),/오리지널 데모/);await p.click('#db-radio-stop');await p.clock.runFor(13000);a.equal(await p.locator('#db-journey').isVisible(),false);
 await p.locator('[data-radio-play]').first().click();await p.clock.runFor(12100);a.equal(await p.locator('#db-journey').isVisible(),true);a.match(await p.locator('#db-journey-title').textContent(),/퇴근/);await p.clock.runFor(15000);a.equal((await p.evaluate(()=>DongbaekOffice.employees()))[0].state,'off');
