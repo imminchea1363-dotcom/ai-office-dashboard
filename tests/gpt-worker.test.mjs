@@ -44,7 +44,7 @@ test('security and billing protections use real SQLite, with OpenAI calls mocked
   assert.equal(calls.length, 0);
   const job = task(); let reply = await worker.fetch(request('/api/jobs', job), env);
   assert.equal(reply.status, 200); let data = await reply.json(); assert.match(data.result, /완성된 결과/); assert.equal(data.reused, false);
-  assert.equal(calls.length, 1); assert.equal(calls[0].url, 'https://api.openai.com/v1/responses');
+  assert.equal(calls.length, 1); assert.equal(calls[0].url, 'https://api.openai.com/v1/responses'); assert.equal(calls[0].options.redirect, 'manual');
   const sent = JSON.parse(calls[0].options.body);
   assert.equal(sent.store, false); assert.equal(sent.model, 'gpt-4.1-mini'); assert.equal(sent.max_output_tokens, 1200); assert.equal(sent.tools, undefined);
   reply = await worker.fetch(request('/api/jobs', job), env); assert.equal((await reply.json()).reused, true); assert.equal(calls.length, 1);
@@ -65,6 +65,11 @@ test('security and billing protections use real SQLite, with OpenAI calls mocked
   const duplicates = await Promise.all([worker.fetch(request('/api/jobs', concurrent), env), worker.fetch(request('/api/jobs', task()), env)]);
   assert.equal(duplicates[0].status, 409); assert.equal((await duplicates[0].json()).error, 'pending');
   assert.equal(duplicates[1].status, 429); assert.equal((await duplicates[1].json()).error, 'busy'); release(); assert.equal((await first).status, 200);
+
+  // Redirects must be rejected, with no automatic forwarding of authorization.
+  env = environment(); let redirects = 0;
+  globalThis.fetch = async (url, options) => { redirects++; assert.equal(options.redirect, 'manual'); return new Response('', { status:302, headers:{Location:'https://untrusted.example'} }); };
+  reply = await worker.fetch(request('/api/jobs', task()), env); assert.equal(reply.status, 502); assert.equal((await reply.json()).error, 'upstream_error'); assert.equal(redirects, 1);
 
   // An upstream error is counted, sanitized, and never retried automatically.
   env = environment(); let failures = 0;

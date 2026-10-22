@@ -48,3 +48,6 @@ Cloudflare Worker 이름: `dongbaek-api`
 `npm run test:gpt-browser`: 모의 연결 서버로 UI의 암호 입력, 실행, 텍스트 표시, 저장, 새로고침, 통신 오류 복구, 한도 오류와 모바일 폭을 검사합니다. 실제 API 키나 크레딧을 사용하지 않습니다.
 
 CLI를 이용할 경우 `wrangler.jsonc`의 D1 ID를 실제 데이터베이스 ID로 바꾸고 배포합니다. Secret 값은 설정 파일에 넣지 않습니다.
+
+## Cloudflare 실행 환경 검사
+`npm run test:gpt-runtime`은 Miniflare 4의 실제 workerd와 D1에서 인증·예약·모의 Responses 호출·결과 조회를 검사합니다. OpenAI 요청은 테스트용 네트워크로 대체하고 실제 외부 접속을 차단합니다. Worker의 외부 요청은 `redirect: manual`을 사용하며 리디렉션 응답은 오류로 처리하여 다른 주소로 API 키를 전달하지 않습니다.

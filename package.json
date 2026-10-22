@@ -15,6 +15,7 @@
     "test:pwa": "node tests/pwa.cjs",
     "test:ai-desk": "node tests/ai-desk.cjs",
     "test:gpt-server": "node --test tests/gpt-worker.test.mjs",
-    "test:gpt-browser": "node tests/gpt-desk.cjs"
+    "test:gpt-browser": "node tests/gpt-desk.cjs",
+    "test:gpt-runtime": "node tests/gpt-workerd.cjs"
   }
 }

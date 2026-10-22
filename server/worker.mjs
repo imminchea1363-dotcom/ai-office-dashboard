@@ -76,7 +76,7 @@ function existing(row, fingerprint) {
 export default {
  async fetch(request, env) {
   const url = new URL(request.url), origin = request.headers.get('Origin') || '';
-  if (request.method === 'GET' && url.pathname === '/health') return json({ service: 'dongbaek-gpt', version: 1, ready: Boolean(configured(env)) }, 200, origin);
+  if (request.method === 'GET' && url.pathname === '/health') return json({ service: 'dongbaek-gpt', version: 2, ready: Boolean(configured(env)) }, 200, origin);
   if (origin !== ORIGIN) return json({ error: 'origin_denied', message: '동백사무실에서 접속해 주세요.' }, 403);
   if (request.method === 'OPTIONS') {
    return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': ORIGIN, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '600', Vary: 'Origin' } });
@@ -125,7 +125,7 @@ export default {
     remote = await fetch('https://api.openai.com/v1/responses', {
      method: 'POST', headers: { Authorization: 'Bearer ' + env.OPENAI_API_KEY, 'Content-Type': 'application/json' },
      body: JSON.stringify({ model: MODEL, instructions, input: `[업무]\n${task.title}\n\n[지시]\n${task.brief}\n\n[결과 형태]\n${task.output}`, max_output_tokens: OUTPUT_LIMIT, store: false }),
-     signal: AbortSignal.timeout(45000), redirect: 'error'
+     signal: AbortSignal.timeout(45000), redirect: 'manual'
     });
     if (!remote.ok) throw new Failure(502, 'upstream_error', remote.status === 429 ? 'OpenAI 잔액이나 사용 한도를 확인해 주세요. 자동 재실행하지 않았습니다.' : 'GPT 호출에 실패했습니다. API 키 권한과 모델 이용 가능 여부를 확인해 주세요.');
     payload = await remote.json();

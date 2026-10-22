@@ -1,0 +1,22 @@
+name: Check GPT Cloudflare runtime
+on:
+  push:
+    branches: [main, codex/gpt-runtime-fix-20261022]
+    paths: ['server/**', 'tests/gpt-workerd.cjs', '.github/workflows/gpt-runtime.yml']
+  pull_request:
+    paths: ['server/**', 'tests/gpt-workerd.cjs', '.github/workflows/gpt-runtime.yml']
+permissions:
+  contents: read
+jobs:
+  workerd:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install Cloudflare runtime test tools
+        run: npm install --no-save --package-lock=false miniflare@4
+      - name: Run worker with real D1 and mocked generation
+        run: node tests/gpt-workerd.cjs
