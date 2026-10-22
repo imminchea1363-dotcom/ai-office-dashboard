@@ -8,7 +8,7 @@ const password = 'mock-only-office-access-password-24';
 (async () => {
  const agent = createFetchMock(); agent.disableNetConnect();
  agent.get('https://openai.mock').intercept({path:'/probe',method:'GET'}).reply(200,'OK').persist();
- const probe = new Miniflare({ modules:true, compatibilityDate:'2026-10-22', fetchMock:agent, script:`export default {async fetch(request){try{const mode=new URL(request.url).searchParams.get('mode');const result=await fetch('https://openai.mock/probe',{redirect:mode});return Response.json({mode,status:result.status});}catch(error){return Response.json({name:error.name,message:error.message},{status:500});}}}` });
+ const probe = new Miniflare({ modules:true, compatibilityDate:'2026-08-01', fetchMock:agent, script:`export default {async fetch(request){try{const mode=new URL(request.url).searchParams.get('mode');const result=await fetch('https://openai.mock/probe',{redirect:mode});return Response.json({mode,status:result.status});}catch(error){return Response.json({name:error.name,message:error.message},{status:500});}}}` });
  try { for (const mode of ['error','manual','follow']) { const r=await probe.dispatchFetch('https://probe.test/?mode='+mode); console.log('RUNTIME_REDIRECT '+JSON.stringify({mode,status:r.status,body:await r.json()})); } }
  finally { await probe.dispose(); }
  let calls=0;
@@ -17,7 +17,7 @@ const password = 'mock-only-office-access-password-24';
  let source=fs.readFileSync(path.join(__dirname,'../server/worker.mjs'),'utf8');
  // Logs only the mock execution error. No user key or production state is used.
  source=source.replace('} catch (error) {\n    await env.DB', '} catch (error) {\n    console.error("RUNTIME_FAILURE",error.name,error.message);\n    await env.DB');
- const runtime=new Miniflare({ modules:true, compatibilityDate:'2026-10-22',script:source,fetchMock:outbound,d1Databases:['DB'],bindings:{OPENAI_API_KEY:'sk-mock-not-a-real-key',OFFICE_ACCESS_TOKEN:password},log:new Log(LogLevel.INFO) });
+ const runtime=new Miniflare({ modules:true, compatibilityDate:'2026-08-01',script:source,fetchMock:outbound,d1Databases:['DB'],bindings:{OPENAI_API_KEY:'sk-mock-not-a-real-key',OFFICE_ACCESS_TOKEN:password},log:new Log(LogLevel.INFO) });
  const headers={Origin:origin,Authorization:'Bearer '+password,'Content-Type':'application/json'};
  try {
   let r=await runtime.dispatchFetch('https://worker.test/api/status',{headers});assert.equal(r.status,200);console.log('RUNTIME_STATUS '+await r.text());
