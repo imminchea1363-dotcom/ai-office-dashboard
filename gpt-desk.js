@@ -33,6 +33,7 @@
   event.preventDefault(); if (busy) return;
   const value = $('db-gpt-access').value.trim();
   if (value.startsWith('sk-')) { $('db-gpt-access').value = ''; message('API 키는 여기에 입력하지 않습니다. Cloudflare의 OFFICE_ACCESS_TOKEN에 정한 별도 접속 암호를 입력해 주세요.'); return; }
+  if (!/^[!-~]{20,256}$/.test(value)) { message('접속 암호는 공백 없이 영문·숫자·기호 20~256자로 입력해 주세요.'); return; }
   access = value; busy = true; update(); message('연결 서버를 확인하고 있습니다…');
   try {
    const data = await call('/api/status'); connected = true; $('db-gpt-access').value = ''; $('db-gpt-settings').open = false;

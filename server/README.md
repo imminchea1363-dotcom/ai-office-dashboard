@@ -16,7 +16,7 @@ Cloudflare Worker 이름: `dongbaek-api`
 ## 대시보드로 설치
 
 1. Worker의 Settings → Runtime variables and secrets에 `OPENAI_API_KEY`를 **Secret**으로 저장합니다. OpenAI 키 권한은 Restricted → Model capabilities → Responses → Write만 필요합니다.
-2. 같은 곳에 `OFFICE_ACCESS_TOKEN`을 **Secret**으로 추가합니다. 비밀번호 관리자로 만든 24자 이상의 무작위 암호를 권장합니다. OpenAI 키나 기존 계정 비밀번호를 재사용하지 마세요. 이 암호는 사무실에서 GPT 연결을 열 때 입력합니다. 채팅, 소스, 공개 URL에 남기지 않습니다. 서버는 최소 20자~최대 256자를 허용합니다.
+2. 같은 곳에 `OFFICE_ACCESS_TOKEN`을 **Secret**으로 추가합니다. 비밀번호 관리자로 만든 영문·숫자·기호로 구성된 공백 없는 24자 이상의 무작위 암호를 권장합니다. OpenAI 키나 기존 계정 비밀번호를 재사용하지 마세요. 이 암호는 사무실에서 GPT 연결을 열 때 입력합니다. 채팅, 소스, 공개 URL에 남기지 않습니다. 서버는 최소 20자~최대 256자를 허용합니다.
 3. Cloudflare의 Storage & databases → D1에서 `dongbaek-gpt` 데이터베이스를 생성합니다.
 4. Worker → Settings → Bindings → Add binding에서 D1 database를 선택하고 변수 이름은 **`DB`**, 데이터베이스는 **`dongbaek-gpt`**로 연결합니다. 바인딩 변경사항을 배포합니다.
 5. Worker의 Edit code에서 기본 Hello World 코드를 `worker.mjs` 전체 내용으로 교체하고 Deploy합니다. 별도 라이브러리 설치는 필요 없습니다. 테이블은 첫 인증 접속 때 자동 생성됩니다.

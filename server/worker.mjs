@@ -34,7 +34,7 @@ async function authorized(request, env) {
 function configured(env) {
  return typeof env.OPENAI_API_KEY === 'string' && env.OPENAI_API_KEY.startsWith('sk-') &&
   typeof env.OFFICE_ACCESS_TOKEN === 'string' && env.OFFICE_ACCESS_TOKEN.length >= 20 &&
-  env.OFFICE_ACCESS_TOKEN.length <= 256 && env.OFFICE_ACCESS_TOKEN !== env.OPENAI_API_KEY &&
+  env.OFFICE_ACCESS_TOKEN.length <= 256 && /^[!-~]+$/.test(env.OFFICE_ACCESS_TOKEN) && env.OFFICE_ACCESS_TOKEN !== env.OPENAI_API_KEY &&
   !env.OFFICE_ACCESS_TOKEN.startsWith('sk-') && env.DB?.prepare;
 }
 async function readJSON(request) {
