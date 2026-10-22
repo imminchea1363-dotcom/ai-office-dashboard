@@ -14,9 +14,7 @@ const password = 'mock-only-office-access-password-24';
  let calls=0;
  const outbound=createFetchMock();outbound.disableNetConnect();
  outbound.get('https://api.openai.com').intercept({path:'/v1/responses',method:'POST'}).reply(200,()=>{calls++;return JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'모의 GPT 결과'}]}],usage:{input_tokens:10,output_tokens:10}});}).persist();
- let source=fs.readFileSync(path.join(__dirname,'../server/worker.mjs'),'utf8');
- // Logs only the mock execution error. No user key or production state is used.
- source=source.replace('} catch (error) {\n    await env.DB', '} catch (error) {\n    console.error("RUNTIME_FAILURE",error.name,error.message);\n    await env.DB');
+ const source=fs.readFileSync(path.join(__dirname,'../server/worker.mjs'),'utf8');
  const runtime=new Miniflare({ modules:true, compatibilityDate:'2026-08-01',script:source,fetchMock:outbound,d1Databases:['DB'],bindings:{OPENAI_API_KEY:'sk-mock-not-a-real-key',OFFICE_ACCESS_TOKEN:password},log:new Log(LogLevel.INFO) });
  const headers={Origin:origin,Authorization:'Bearer '+password,'Content-Type':'application/json'};
  try {

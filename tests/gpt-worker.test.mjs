@@ -44,7 +44,7 @@ test('security and billing protections use real SQLite, with OpenAI calls mocked
   assert.equal(calls.length, 0);
   const job = task(); let reply = await worker.fetch(request('/api/jobs', job), env);
   assert.equal(reply.status, 200); let data = await reply.json(); assert.match(data.result, /완성된 결과/); assert.equal(data.reused, false);
-  assert.equal(calls.length, 1); assert.equal(calls[0].url, 'https://api.openai.com/v1/responses');
+  assert.equal(calls.length, 1); assert.equal(calls[0].url, 'https://api.openai.com/v1/responses'); assert.equal(calls[0].options.redirect, 'manual');
   const sent = JSON.parse(calls[0].options.body);
   assert.equal(sent.store, false); assert.equal(sent.model, 'gpt-4.1-mini'); assert.equal(sent.max_output_tokens, 1200); assert.equal(sent.tools, undefined);
   reply = await worker.fetch(request('/api/jobs', job), env); assert.equal((await reply.json()).reused, true); assert.equal(calls.length, 1);
