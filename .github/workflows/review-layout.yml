@@ -33,6 +33,7 @@ jobs:
       - name: Check and build review files
         run: |
           npm run check
+          npm run test:gpt-server
           npm run build:pwa
           npm run export
       - name: Capture screens and run browser checks
@@ -44,20 +45,20 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: dongbaek-v6.2-screens
+          name: dongbaek-v6.3-screens
           path: review/previews/
           retention-days: 14
       - name: Upload install files
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: dongbaek-v6.2-install
+          name: dongbaek-v6.3-install
           path: review/dist/*.zip
           retention-days: 14
       - name: Upload standalone HTML
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: dongbaek-v6.2-html
+          name: dongbaek-v6.3-html
           path: review/dist/*.html
           retention-days: 14
