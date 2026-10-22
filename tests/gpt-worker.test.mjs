@@ -66,6 +66,11 @@ test('security and billing protections use real SQLite, with OpenAI calls mocked
   assert.equal(duplicates[0].status, 409); assert.equal((await duplicates[0].json()).error, 'pending');
   assert.equal(duplicates[1].status, 429); assert.equal((await duplicates[1].json()).error, 'busy'); release(); assert.equal((await first).status, 200);
 
+  // Redirects must be rejected, with no automatic forwarding of authorization.
+  env = environment(); let redirects = 0;
+  globalThis.fetch = async (url, options) => { redirects++; assert.equal(options.redirect, 'manual'); return new Response('', { status:302, headers:{Location:'https://untrusted.example'} }); };
+  reply = await worker.fetch(request('/api/jobs', task()), env); assert.equal(reply.status, 502); assert.equal((await reply.json()).error, 'upstream_error'); assert.equal(redirects, 1);
+
   // An upstream error is counted, sanitized, and never retried automatically.
   env = environment(); let failures = 0;
   globalThis.fetch = async () => { failures++; return Response.json({ error: { message: 'private upstream detail' } }, { status: 429 }); };
