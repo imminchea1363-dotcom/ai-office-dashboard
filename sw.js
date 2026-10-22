@@ -1,9 +1,9 @@
 /* Build replaces the cache suffix with a content hash. */
 const ROOT = new URL('./', self.location.href);
 const PREFIX = 'dongbaek-pwa-' + encodeURIComponent(ROOT.pathname) + '-';
-const CACHE = PREFIX + '0ececcaa4fc25c65';
+const CACHE = PREFIX + '74fde60efa2eb929';
 const ASSETS = [
-  './', './index.html', './characters.js', './pixel-mode.js', './v3.js', './pwa.js', './radio.js', './gym-music.js', './ai-desk.js',
+  './', './index.html', './characters.js', './pixel-mode.js', './v3.js', './pwa.js', './radio.js', './gym-music.js', './ai-desk.js', './gpt-desk.js',
   './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png',
   './icons/maskable-512.png', './assets/office-pixel.png', './assets/office-background.png','./assets/lobby-background.png','./assets/gym-background.png','./assets/characters-standing.png','./assets/characters-working.png','./assets/characters-gym.png','./assets/characters-cleaner.png','./assets/characters-coffee.png'
 ];

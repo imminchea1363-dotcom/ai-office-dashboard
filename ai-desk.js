@@ -1,4 +1,4 @@
-/* User-directed handoff to existing web apps; no API calls or shared logins. */
+/* Existing manual handoff and job storage, with an optional GPT bridge. */
 (()=>{
   'use strict';
   const office=window.DongbaekOffice;
@@ -15,7 +15,7 @@
   ];
   const defaults={1:'chatgpt',2:'claude',3:'canva',4:'chatgpt'};
   const key='dongbaek-ai-desk-v1';
-  const states={prepared:'지시문 준비',copied:'지시문 복사됨',ready:'결과 기록됨',reporting:'대표에게 이동 중',reported:'보고 완료'};
+  const states={generating:'GPT 작업 중',pending:'결과 확인 필요',failed:'GPT 실행 종료',prepared:'지시문 준비',copied:'지시문 복사됨',ready:'결과 기록됨',reporting:'대표에게 이동 중',reported:'보고 완료'};
   const el=(tag,text,className)=>{const node=document.createElement(tag);if(text)node.textContent=text;if(className)node.className=className;return node;};
   const byId=id=>document.getElementById(id);
   const service=id=>services.find(item=>item.id===id)||services[0];
@@ -26,7 +26,7 @@
     const saved=JSON.parse(localStorage.getItem(key)||'{}');
     if(saved&&typeof saved==='object'){
       if(Array.isArray(saved.jobs))jobs=saved.jobs.slice(0,100).filter(job=>job&&typeof job.id==='string'&&Number.isInteger(job.workerId)&&services.some(s=>s.id===job.service)).map(job=>({
-        id:clean(job.id,100),workerId:job.workerId,workerName:clean(job.workerName,200),job:clean(job.job,100),service:job.service,title:clean(job.title,100),brief:clean(job.brief,6000),output:clean(job.output,80),result:clean(job.result,20000),url:safeURL(job.url),status:job.status==='reporting'?'ready':states[job.status]?job.status:'prepared',created:clean(job.created,80),updated:clean(job.updated,80)
+        id:clean(job.id,100),workerId:job.workerId,workerName:clean(job.workerName,200),job:clean(job.job,100),service:job.service,title:clean(job.title,100),brief:clean(job.brief,6000),output:clean(job.output,80),result:clean(job.result,20000),url:safeURL(job.url),status:job.status==='generating'?'pending':job.status==='reporting'?'ready':states[job.status]?job.status:'prepared',gpt:job.gpt===true,usage:job.usage||null,created:clean(job.created,80),updated:clean(job.updated,80)
       }));
       if(saved.assignments&&typeof saved.assignments==='object')for(const [id,value] of Object.entries(saved.assignments))if(/^\d+$/.test(id)&&services.some(s=>s.id===value))assignments[id]=value;
       if(saved.draft&&typeof saved.draft==='object')draft=saved.draft;
@@ -105,7 +105,7 @@
       const card=el('article',null,'db-ai-task');card.dataset.aiJob=job.id;const header=el('header');header.append(el('strong',job.title),el('span',states[job.status],'db-ai-badge'));card.append(header,el('small',job.job+' · '+job.workerName+' / '+service(job.service).name));
       const details=el('details');details.append(el('summary','지시문과 결과 보기'),el('pre',instruction(job)));
       if(job.result)details.append(el('pre',job.result));if(job.url){const link=el('a','저장한 결과 열기 ↗');link.href=job.url;link.target='_blank';link.rel='noopener noreferrer';details.append(link);}card.append(details);
-      const actions=el('div',null,'db-ai-actions');const record=el('button','결과 기록');record.dataset.aiRecord=job.id;record.disabled=job.status==='reporting';record.onclick=()=>{editing=job.id;byId('db-ai-result-title').textContent=job.title+' · '+service(job.service).name;byId('db-ai-result-text').value=job.result;byId('db-ai-result-url').value=job.url;byId('db-ai-result-error').textContent='';dialog.showModal();};actions.append(record);
+      const actions=el('div',null,'db-ai-actions');const record=el('button','결과 기록');record.dataset.aiRecord=job.id;record.disabled=['reporting','generating','pending'].includes(job.status);record.onclick=()=>{editing=job.id;byId('db-ai-result-title').textContent=job.title+' · '+service(job.service).name;byId('db-ai-result-text').value=job.result;byId('db-ai-result-url').value=job.url;byId('db-ai-result-error').textContent='';dialog.showModal();};actions.append(record);
       const report=el('button',job.status==='reported'?'보고 완료':'대표에게 보고');report.dataset.aiReport=job.id;report.disabled=!['ready'].includes(job.status);report.onclick=()=>{
         const employee=office.employees().find(p=>p.id===job.workerId);
         if(!employee||employee.state==='off'){notice('담당 직원이 출근한 상태에서 보고할 수 있습니다. 기록한 결과는 보관됩니다.');return;}
@@ -114,8 +114,9 @@
         job.beforeReports=previous;job.status='reporting';persist();renderJobs();notice(job.workerName+'이 대표실로 이동합니다. 보고가 접수되면 완료로 표시됩니다.');
       };actions.append(report);
       const exportButton=el('button','보고서 내려받기');exportButton.onclick=()=>download('동백사무실-'+job.title.replace(/[\\/:*?"<>|]/g,'-')+'.md','# '+job.title+'\n\n'+instruction(job)+'\n\n## 결과\n\n'+(job.result||'결과 미기록')+(job.url?'\n\n결과 링크: '+job.url:'')+'\n\n상태: '+states[job.status],'text/markdown;charset=utf-8');actions.append(exportButton);
-      const remove=el('button','기록 삭제');remove.disabled=job.status==='reporting';remove.onclick=()=>{if(!confirm('이 업무 기록을 삭제할까요? 필요한 결과는 먼저 내려받으세요.'))return;jobs=jobs.filter(j=>j.id!==job.id);persist();renderJobs();notice('선택한 업무 기록을 삭제했습니다.');};actions.append(remove);card.append(actions);list.append(card);
+      const remove=el('button','기록 삭제');remove.disabled=['reporting','generating','pending'].includes(job.status);remove.onclick=()=>{if(!confirm('이 업무 기록을 삭제할까요? 필요한 결과는 먼저 내려받으세요.'))return;jobs=jobs.filter(j=>j.id!==job.id);persist();renderJobs();notice('선택한 업무 기록을 삭제했습니다.');};actions.append(remove);card.append(actions);list.append(card);
     }
+    document.dispatchEvent(new Event('dongbaek-ai-jobs'));
   }
   document.addEventListener('dongbaek-scene',()=>{
     if(refreshWorkers()){updateDraft();persist();}let changed=false;
@@ -131,6 +132,19 @@
     const actions=document.querySelector('#db-detail-content .db-detail-actions');if(!actions||actions.querySelector('[data-ai-assign]'))return;
     const button=el('button','이 직원에게 AI 업무 맡기기');button.className='db-action';button.dataset.aiAssign=target.dataset.worker;
     button.onclick=()=>{worker.value=target.dataset.worker;worker.onchange();byId('db-detail').close();section.scrollIntoView({behavior:'smooth',block:'start'});title.focus({preventScroll:true});};actions.append(button);
+  });
+  window.DongbaekAIDesk=Object.freeze({
+    startGPT:()=>{
+      if(current().workerId!==1||provider.value!=='chatgpt'){notice('GPT 시험 연결은 총괄 직원과 ChatGPT를 선택해 주세요.');return null;}
+      if(jobs.some(j=>j.gpt&&['generating','pending'].includes(j.status))){notice('먼저 진행 중인 GPT 업무의 결과를 확인해 주세요.');return null;}
+      draft.jobId=null;const job=prepareJob();if(!job)return null;
+      job.gpt=true;job.status='generating';persist();renderJobs();return {...job};
+    },
+    finishGPT:(id,data)=>{const job=jobs.find(j=>j.id===id);if(!job)return;job.result=clean(data.result,20000);job.usage=data.usage||null;job.status='ready';job.updated=new Date().toISOString();persist();renderJobs();notice('GPT 결과를 기록했습니다. 검토한 뒤 대표에게 보고할 수 있습니다.');},
+    failGPT:(id,pending)=>{const job=jobs.find(j=>j.id===id);if(!job)return;job.status=pending?'pending':'failed';job.updated=new Date().toISOString();persist();renderJobs();},
+    pendingGPT:()=>jobs.filter(j=>j.gpt&&j.status==='pending').map(j=>({...j})),
+    abandonGPT:id=>{const job=jobs.find(j=>j.id===id);if(!job||job.status!=='pending')return;job.status='failed';persist();renderJobs();},
+    notify:notice
   });
   updateDraft();renderJobs();notice('지시문 복사 → AI 열기 → 결과 기록 → 대표에게 보고 순서로 이용하세요.');
 })();
