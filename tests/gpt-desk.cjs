@@ -63,6 +63,7 @@ const path = require('node:path');
   await page.locator('#db-gpt-panel').screenshot({path:path.join(previews,'gpt-panel-desktop.png')});
   await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.locator('#db-gpt-panel').screenshot({path:path.join(previews,'gpt-panel-mobile.png')});
+  await page.locator('#db-gpt-settings > summary').click();
   await page.click('#db-gpt-disconnect'); assert.equal(await page.locator('#db-gpt-run').isDisabled(),true);
   assert.deepEqual(errors,[]);await context.close();
   console.log('PASS GPT browser: disconnected by default, rejects API keys as login, real auth flow with mocked backend, employee eligibility, user-triggered execution, safe result storage, no stored password, reload recovery without repeated billing, quota error, manual handoff preserved, mobile layout');
