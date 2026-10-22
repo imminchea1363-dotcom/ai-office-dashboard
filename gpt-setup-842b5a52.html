@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><meta name="worker-sha256" content="f6a3104a14962740508b57b42a0c2e2091c97a79d19a73dcf95532d6fb5b4ec4">
+<title>동백 GPT 서버 코드 복사</title>
+<style>body{font-family:system-ui,sans-serif;background:#f7f6ef;color:#253d30;line-height:1.7;margin:0;padding:24px}main{max-width:740px;margin:auto}h1{font-size:25px}button,a{font:inherit}button{padding:16px 24px;background:#285740;color:white;border:0;border-radius:9px;cursor:pointer}li{margin:12px 0}textarea{box-sizing:border-box;width:100%;min-height:260px;font:12px monospace;margin-top:12px}#status{padding:14px 0;font-weight:600}small{overflow-wrap:anywhere}a{color:#285740}</style>
+<main><h1>동백 GPT 서버 코드 복사</h1><p>아래 버튼은 공개된 서버 코드만 복사합니다. API 키나 접속 암호를 입력할 필요가 없습니다.</p>
+<button id="copy" type="button">서버 코드 전체 복사</button><p id="status" role="status" aria-live="polite">버튼을 누른 뒤 Cloudflare 코드 편집 탭으로 돌아가세요.</p>
+<ol><li>Cloudflare 편집기의 <b>worker.js</b> 코드 영역을 누르세요.</li><li><b>전체 선택 → 붙여넣기</b>로 기본 Hello World 코드를 교체하세요. 노트북에서는 코드 영역 클릭 후 Ctrl+A, Ctrl+V를 사용하세요.</li><li>오른쪽 위 <b>Deploy</b>를 누르고 완료될 때까지 기다리세요.</li><li><a href="https://dongbaek-api.imminchea1363.workers.dev/health" target="_blank" rel="noopener">서버 설정 확인 열기</a>에서 <b>ready: true</b>를 확인하세요. 이 확인은 GPT 생성 요금을 발생시키지 않습니다.</li></ol>
+<p>ready가 false이면 OPENAI_API_KEY·OFFICE_ACCESS_TOKEN Secret과 DB 바인딩을 확인하세요. 이 단계는 서버 준비 확인이며 실제 GPT 작업 성공 확인은 아닙니다.</p>
+<details id="details"><summary>복사가 안 될 때 코드 직접 선택</summary><textarea id="source" readonly aria-label="서버 코드">/* Cloudflare Worker. Secrets belong in Cloudflare, never in this repository. */
+const ORIGIN = 'https://imminchea1363-dotcom.github.io';
+const MODEL = 'gpt-4.1-mini';
+const DAILY_LIMIT = 20;
+const PILOT_LIMIT = 200;
+const OUTPUT_LIMIT = 1200;
+const MAX_BODY = 32768;
+const schema = `CREATE TABLE IF NOT EXISTS gpt_jobs (
+ id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, day TEXT NOT NULL,
+ status TEXT NOT NULL, created INTEGER NOT NULL, result TEXT,
+ input_tokens INTEGER, output_tokens INTEGER
+)`;
+const instructions = '당신은 동백사무실의 동백대리입니다. 대표의 지시에 따라 기획, 글 작성, 요약을 수행합니다. 한국어로 명료하게 답하세요. 제공되지 않은 사실, 가격, 시설 정보와 통계를 지어내지 마세요. 확인이 필요한 정보는 표시하세요. 외부 검색, 게시, 발송, 예약, 결제를 수행했다고 주장하지 마세요. 결과물을 바로 검토할 수 있게 작성하세요.';
+
+class Failure extends Error {
+ constructor(status, code, message) { super(message); this.status = status; this.code = code; }
+}
+function json(data, status = 200, origin = '') {
+ const headers = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', Vary: 'Origin' };
+ if (origin === ORIGIN) headers['Access-Control-Allow-Origin'] = ORIGIN;
+ return new Response(JSON.stringify(data), { status, headers });
+}
+async function hash(value) {
+ const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+ return [...new Uint8Array(bytes)].map(byte =&gt; byte.toString(16).padStart(2, '0')).join('');
+}
+async function authorized(request, env) {
+ const supplied = request.headers.get('Authorization') || '';
+ if (!supplied.startsWith('Bearer ') || supplied.length &gt; 520) return false;
+ const a = await hash(supplied.slice(7)), b = await hash(env.OFFICE_ACCESS_TOKEN);
+ let diff = 0; for (let i = 0; i &lt; a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+ return diff === 0;
+}
+function configured(env) {
+ return typeof env.OPENAI_API_KEY === 'string' &amp;&amp; env.OPENAI_API_KEY.startsWith('sk-') &amp;&amp;
+  typeof env.OFFICE_ACCESS_TOKEN === 'string' &amp;&amp; env.OFFICE_ACCESS_TOKEN.length &gt;= 20 &amp;&amp;
+  env.OFFICE_ACCESS_TOKEN.length &lt;= 256 &amp;&amp; /^[!-~]+$/.test(env.OFFICE_ACCESS_TOKEN) &amp;&amp; env.OFFICE_ACCESS_TOKEN !== env.OPENAI_API_KEY &amp;&amp;
+  !env.OFFICE_ACCESS_TOKEN.startsWith('sk-') &amp;&amp; env.DB?.prepare;
+}
+async function readJSON(request) {
+ if (!(request.headers.get('Content-Type') || '').toLowerCase().startsWith('application/json')) throw new Failure(415, 'json_required', 'JSON 형식으로 요청해 주세요.');
+ const reader = request.body?.getReader(); if (!reader) throw new Failure(400, 'invalid_body', '업무 내용이 없습니다.');
+ const chunks = []; let size = 0;
+ while (true) {
+  const { done, value } = await reader.read(); if (done) break;
+  size += value.byteLength;
+  if (size &gt; MAX_BODY) { await reader.cancel(); throw new Failure(413, 'too_large', '업무 내용이 너무 깁니다.'); }
+  chunks.push(value);
+ }
+ const bytes = new Uint8Array(size); let offset = 0;
+ for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+ try { return JSON.parse(new TextDecoder().decode(bytes)); }
+ catch { throw new Failure(400, 'invalid_body', '업무 형식을 확인해 주세요.'); }
+}
+function validate(data) {
+ if (!data || typeof data !== 'object' || Array.isArray(data) || !/^[a-f0-9-]{36}$/i.test(data.id || '')) throw new Failure(400, 'invalid_id', '업무 식별자가 올바르지 않습니다.');
+ const text = (key, max) =&gt; {
+  if (typeof data[key] !== 'string' || !data[key].trim() || data[key].length &gt; max) throw new Failure(400, 'invalid_task', '업무 제목과 지시 내용을 확인해 주세요.');
+  return data[key].trim();
+ };
+ return { id: data.id, title: text('title', 100), brief: text('brief', 6000), output: text('output', 80) };
+}
+async function usage(db, day) {
+ return await db.prepare('SELECT COUNT(*) AS total, COALESCE(SUM(CASE WHEN day = ? THEN 1 ELSE 0 END),0) AS today FROM gpt_jobs').bind(day).first();
+}
+function completed(row, reused = false) {
+ return { id: row.id, result: row.result, model: MODEL, reused, usage: { input_tokens: row.input_tokens, output_tokens: row.output_tokens } };
+}
+function existing(row, fingerprint) {
+ if (row.fingerprint !== fingerprint) throw new Failure(409, 'id_conflict', '같은 식별자로 다른 업무를 실행할 수 없습니다.');
+ if (row.status === 'done') return completed(row, true);
+ if (row.status === 'reserved') throw new Failure(409, 'pending', '이 업무는 이미 접수됐습니다. 잠시 후 결과 확인을 눌러주세요.');
+ throw new Failure(409, 'previous_attempt', '이 업무의 이전 실행이 종료됐습니다. 같은 요청을 자동 재실행하지 않습니다.');
+}
+
+export default {
+ async fetch(request, env) {
+  const url = new URL(request.url), origin = request.headers.get('Origin') || '';
+  if (request.method === 'GET' &amp;&amp; url.pathname === '/health') return json({ service: 'dongbaek-gpt', version: 1, ready: Boolean(configured(env)) }, 200, origin);
+  if (origin !== ORIGIN) return json({ error: 'origin_denied', message: '동백사무실에서 접속해 주세요.' }, 403);
+  if (request.method === 'OPTIONS') {
+   return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': ORIGIN, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '600', Vary: 'Origin' } });
+  }
+  try {
+   if (!['/api/status', '/api/jobs', '/api/result'].includes(url.pathname)) throw new Failure(404, 'not_found', '요청한 기능이 없습니다.');
+   if (!configured(env)) throw new Failure(503, 'not_configured', '서버의 API 키, 사무실 접속 암호, DB 연결을 확인해 주세요.');
+   if (!await authorized(request, env)) throw new Failure(401, 'unauthorized', '사무실 접속 암호가 맞지 않습니다.');
+   await env.DB.prepare(schema).run();
+   const day = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+   if (request.method === 'GET' &amp;&amp; url.pathname === '/api/status') {
+    return json({ connected: true, model: MODEL, limits: { daily: DAILY_LIMIT, pilot: PILOT_LIMIT, max_output_tokens: OUTPUT_LIMIT, timezone: 'Asia/Seoul' }, used: await usage(env.DB, day) }, 200, origin);
+   }
+   if (request.method === 'GET' &amp;&amp; url.pathname === '/api/result') {
+    const id = url.searchParams.get('id') || '';
+    if (!/^[a-f0-9-]{36}$/i.test(id)) throw new Failure(400, 'invalid_id', '업무 식별자가 올바르지 않습니다.');
+    const row = await env.DB.prepare('SELECT * FROM gpt_jobs WHERE id = ?').bind(id).first();
+    if (!row) throw new Failure(404, 'missing_job', '접수된 업무를 찾을 수 없습니다.');
+    if (row.status !== 'done') throw new Failure(409, row.status === 'reserved' ? 'pending' : 'previous_attempt', row.status === 'reserved' ? '아직 결과가 준비되지 않았습니다. 잠시 후 다시 확인해 주세요.' : '이 업무는 결과 없이 종료됐습니다.');
+    return json(completed(row, true), 200, origin);
+   }
+   if (request.method !== 'POST' || url.pathname !== '/api/jobs') throw new Failure(405, 'method_not_allowed', '요청 방식을 확인해 주세요.');
+   const task = validate(await readJSON(request));
+   const fingerprint = await hash(JSON.stringify([task.title, task.brief, task.output]));
+   const old = await env.DB.prepare('SELECT * FROM gpt_jobs WHERE id = ?').bind(task.id).first();
+   if (old) return json(existing(old, fingerprint), 200, origin);
+   const now = Date.now();
+   // A single atomic SQLite statement enforces both quotas and one in-flight call.
+   // Failed/uncertain attempts stay counted, so retries cannot bypass the limits.
+   const reserved = await env.DB.prepare(`INSERT OR IGNORE INTO gpt_jobs (id,fingerprint,day,status,created)
+    SELECT ?,?,?,'reserved',? WHERE
+    (SELECT COUNT(*) FROM gpt_jobs WHERE day = ?) &lt; ? AND
+    (SELECT COUNT(*) FROM gpt_jobs) &lt; ? AND
+    NOT EXISTS (SELECT 1 FROM gpt_jobs WHERE status = 'reserved' AND created &gt; ?)`)
+    .bind(task.id, fingerprint, day, now, day, DAILY_LIMIT, PILOT_LIMIT, now - 120000).run();
+   if (!reserved.meta?.changes) {
+    const duplicate = await env.DB.prepare('SELECT * FROM gpt_jobs WHERE id = ?').bind(task.id).first();
+    if (duplicate) return json(existing(duplicate, fingerprint), 200, origin);
+    const used = await usage(env.DB, day);
+    if (used.total &gt;= PILOT_LIMIT) throw new Failure(429, 'pilot_limit', '시험 운영의 총 200회 한도에 도달했습니다. 사용량을 검토한 뒤 확대해 주세요.');
+    if (used.today &gt;= DAILY_LIMIT) throw new Failure(429, 'daily_limit', '오늘의 20회 한도에 도달했습니다. 한국시간 자정 이후 다시 이용해 주세요.');
+    throw new Failure(429, 'busy', '다른 업무를 처리 중입니다. 완료 후 다시 실행해 주세요.');
+   }
+   let remote, payload;
+   try {
+    remote = await fetch('https://api.openai.com/v1/responses', {
+     method: 'POST', headers: { Authorization: 'Bearer ' + env.OPENAI_API_KEY, 'Content-Type': 'application/json' },
+     body: JSON.stringify({ model: MODEL, instructions, input: `[업무]\n${task.title}\n\n[지시]\n${task.brief}\n\n[결과 형태]\n${task.output}`, max_output_tokens: OUTPUT_LIMIT, store: false }),
+     signal: AbortSignal.timeout(45000), redirect: 'error'
+    });
+    if (!remote.ok) throw new Failure(502, 'upstream_error', remote.status === 429 ? 'OpenAI 잔액이나 사용 한도를 확인해 주세요. 자동 재실행하지 않았습니다.' : 'GPT 호출에 실패했습니다. API 키 권한과 모델 이용 가능 여부를 확인해 주세요.');
+    payload = await remote.json();
+    const result = (payload.output || []).filter(item =&gt; item.type === 'message').flatMap(item =&gt; item.content || []).filter(item =&gt; item.type === 'output_text').map(item =&gt; item.text).join('\n').trim();
+    if (payload.status !== 'completed' || !result) throw new Failure(502, 'incomplete', 'GPT가 완성된 결과를 반환하지 않았습니다. 지시를 짧게 나누어 주세요.');
+    const row = { id: task.id, result: result.slice(0, 20000), input_tokens: payload.usage?.input_tokens || 0, output_tokens: payload.usage?.output_tokens || 0 };
+    await env.DB.prepare("UPDATE gpt_jobs SET status = 'done', result = ?, input_tokens = ?, output_tokens = ? WHERE id = ?").bind(row.result, row.input_tokens, row.output_tokens, row.id).run();
+    return json(completed(row), 200, origin);
+   } catch (error) {
+    await env.DB.prepare("UPDATE gpt_jobs SET status = 'failed' WHERE id = ? AND status = 'reserved'").bind(task.id).run();
+    if (error instanceof Failure) throw error;
+    throw new Failure(502, 'uncertain', '통신 또는 저장 중 오류가 발생했습니다. 사용료가 발생했을 수 있어 자동 재실행하지 않았습니다.');
+   }
+  } catch (error) {
+   return json({ error: error instanceof Failure ? error.code : 'server_error', message: error instanceof Failure ? error.message : '서버 처리에 실패했습니다. DB 연결을 확인해 주세요.' }, error instanceof Failure ? error.status : 503, origin);
+  }
+ }
+};
+</textarea></details>
+<p><small>코드 SHA-256: f6a3104a14962740508b57b42a0c2e2091c97a79d19a73dcf95532d6fb5b4ec4</small></p></main>
+<script>
+'use strict';
+const field=document.getElementById('source'),status=document.getElementById('status');
+document.getElementById('copy').onclick=async()=>{
+ try{
+  if(!navigator.clipboard?.writeText)throw Error('manual');
+  await navigator.clipboard.writeText(field.value);
+  status.textContent='서버 코드 전체를 복사했습니다. Cloudflare 편집기로 돌아가 전체 선택 후 붙여넣으세요.';
+ }catch{
+  document.getElementById('details').open=true;field.focus();field.select();field.setSelectionRange(0,field.value.length);
+  let copied=false;try{copied=document.execCommand('copy');}catch{}
+  status.textContent=copied?'서버 코드 전체를 복사했습니다. Cloudflare 편집기로 돌아가세요.':'코드를 전체 선택했습니다. 선택 메뉴의 복사를 누른 뒤 Cloudflare로 돌아가세요.';
+ }
+};
+</script></html>
