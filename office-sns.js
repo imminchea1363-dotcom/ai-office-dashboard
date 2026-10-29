@@ -26,7 +26,8 @@
   });
  }
  function mediaCheck(entry){
-  if(['틱톡','유튜브 쇼츠'].includes(entry.platform))return '세로 동영상 파일이 이 작업에 연결되지 않았습니다. 영상 제작 및 플랫폼별 업로드 검증 필요';
+  if(entry.platform==='유튜브 쇼츠')return '세로 동영상 파일이 연결되지 않았습니다. 영상 제작·업로드 권한 확인 필요';
+  if(entry.platform==='틱톡')return entry.hasPoster?'사진 게시에는 공식 API 권한과 검증된 공개 이미지 URL이 별도로 필요합니다. 영상 게시에는 동영상 파일이 필요합니다.':'사진 또는 동영상이 연결되지 않았습니다. 게시 방식과 API 권한을 확인하세요';
   if(entry.platform==='인스타그램')return entry.hasPoster?'로컬 포스터 PNG 있음 · 해당 플랫폼의 계정·게시 규격 검증 필요':'사진 또는 동영상 자료 연결 필요';
   return entry.hasPoster?'로컬 포스터 PNG 확인 · 게시 전 내용 검토 필요':'텍스트 초안 · 미디어가 필요한 게시인지 확인';
  }
@@ -70,7 +71,7 @@
    if(entry.state==='초안'){
     const approve=el('button','대표 승인');approve.type='button';approve.dataset.snsApprove=entry.id;
     approve.onclick=()=>{
-     if(['틱톡','유튜브 쇼츠'].includes(entry.platform)&&entry.sourceJobId)info.textContent='영상 원본이 연결되지 않았습니다. 현재 승인은 게시 문안에만 해당하며, 영상 업로드 준비와 별개입니다.';
+     if(['틱톡','유튜브 쇼츠'].includes(entry.platform))info.textContent='현재 승인은 게시 문안에만 해당합니다. 사진·영상 미디어 및 플랫폼별 업로드 준비는 별도로 확인해야 합니다.';
      if(!window.confirm('이 콘텐츠의 게시 문안을 확인하고 승인하시겠습니까? 플랫폼 업로드와 자동 게시는 실행되지 않습니다.'))return;
      entry.state='대표 승인';entry.updated=Date.now();if(put())draw();
     };actions.append(approve);
