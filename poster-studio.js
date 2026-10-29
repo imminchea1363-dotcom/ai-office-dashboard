@@ -2,7 +2,7 @@
 (() => {
  'use strict';
  const NAME='dongbaek-poster-studio-v1', SIZE=8*1024*1024, MAX_PHOTOS=5, MAX_TOTAL=30*1024*1024;
- let selected=[];let selectedIndex=0;
+ let selected=[];let selectedIndex=0;let creationSettings=null;
  const clean=(s,n)=>String(s||'').replace(/[<>]/g,'').replace(/[\u0000-\u001f]/g,' ').trim().slice(0,n);
  function openDB(){return new Promise((ok,bad)=>{
   if(!indexedDB)return bad(Error('이 브라우저에서 이미지 저장이 불가능합니다.'));
@@ -83,49 +83,112 @@
   for(const line of wrap(ctx,s,width,max)){ctx.fillText(line,x,y);y+=font*step;}
   return y;
  }
- async function draw(data,photo){
-  const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=1920;
-  const c=canvas.getContext('2d');if(!c)throw Error('브라우저 이미지 제작을 지원하지 않습니다.');
-  const g=c.createLinearGradient(0,0,1080,1920);
-  g.addColorStop(0,'#163d46');g.addColorStop(1,'#0e242e');c.fillStyle=g;c.fillRect(0,0,1080,1920);
-  if(photo){
-   const bitmap=await createImageBitmap(photo);
-   try{const f=Math.max(1080/bitmap.width,1920/bitmap.height),w=bitmap.width*f,h=bitmap.height*f;c.drawImage(bitmap,(1080-w)/2,(1920-h)/2,w,h);}
-   finally{bitmap.close?.();}
-  }else{
-   // Graphic-only background, never a fictitious guesthouse or pet photo.
-   c.fillStyle='#35717c';c.beginPath();c.ellipse(850,410,590,295,-.3,0,Math.PI*2);c.fill();
-   c.fillStyle='#d5ac77';c.beginPath();c.arc(790,475,115,0,Math.PI*2);c.fill();
-   c.fillStyle='#2e5c64';c.beginPath();c.ellipse(130,1160,650,320,-.3,0,Math.PI*2);c.fill();
-  }
-  const shade=c.createLinearGradient(0,0,0,1920);shade.addColorStop(0,'rgba(0,24,30,.46)');
-  shade.addColorStop(.45,'rgba(0,24,30,.10)');shade.addColorStop(.69,'rgba(0,24,30,.72)');shade.addColorStop(1,'rgba(0,24,30,.96)');
-  c.fillStyle=shade;c.fillRect(0,0,1080,1920);
-  c.strokeStyle='rgba(255,255,255,.7)';c.lineWidth=3;c.strokeRect(44,44,992,1832);
-  text(c,'DONGBAEG  ·  PENSION',86,98,35,910,1);
-  c.fillStyle='#e6c794';c.fillRect(86,1183,98,9);
-  const end=text(c,data.headline,86,1230,91,905,3,1.33);
-  text(c,data.subtitle,90,Math.min(1580,end+30),41,900,3,1.42);
-  c.fillStyle='#fff7e7';c.fillRect(78,1740,924,105);
-  text(c,data.cta,108,1768,35,850,1,1.2,'#224348');
-  return await new Promise((ok,bad)=>canvas.toBlob(b=>b?ok(b):bad(Error('PNG 저장에 실패했습니다.')),'image/png'));
+
+ const FORMATS={story:{w:1080,h:1920,label:'스토리·릴스 9:16'},feed:{w:1080,h:1350,label:'인스타 피드 4:5'}};
+ const STYLES={
+  coastal:{label:'바다 감성',background:'#163d46',accent:'#e6c794',text:'#fff7e7'},
+  warm:{label:'따뜻한 휴식',background:'#453c34',accent:'#f0d2a9',text:'#fff7e7'},
+  clean:{label:'깔끔한 홍보',background:'#17323b',accent:'#93dccc',text:'#ffffff'}
+ };
+ function choices(value){
+  const obj=value&&typeof value==='object'?value:{};
+  return {format:FORMATS[obj.format]?obj.format:'story',template:STYLES[obj.template]?obj.template:'coastal',
+   layout:obj.layout==='collage'?'collage':'single',
+   selectedIndex:Number.isInteger(obj.selectedIndex)&&obj.selectedIndex>=0?obj.selectedIndex:0};
  }
- async function prepare(id,photos,chosen=0){
+ function settingsUI(input,id){
+  const preset=choices(input),root=document.createElement('div'),selects={};
+  root.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(156px,1fr));gap:8px;margin:8px 0';
+  const specifications=[
+   ['format','포스터 규격',[['story','릴스·스토리 9:16'],['feed','피드 4:5']]],
+   ['template','디자인',[['coastal','바다 감성'],['warm','따뜻한 휴식'],['clean','깔끔한 홍보']]],
+   ['layout','사진 배치',[['single','대표 사진 1장'],['collage','사진 2~3장 조합']]]
+  ];
+  for(const [key,title,options] of specifications){
+   const label=document.createElement('label');label.textContent=title;label.style.cssText='font-size:13px;font-weight:600';
+   const sel=document.createElement('select');sel.id=id+'-'+key;sel.style.cssText='display:block;width:100%;padding:8px;background:white;border:1px solid #aebeb0;border-radius:5px;color:#183b39;font-size:13px';
+   for(const [value,display] of options){const option=document.createElement('option');option.value=value;option.textContent=display;sel.append(option);}
+   sel.value=preset[key];selects[key]=sel;label.append(sel);root.append(label);
+  }
+  return {root,get:()=>Object.fromEntries(Object.entries(selects).map(([key,sel])=>[key,sel.value]))};
+ }
+ function cover(ctx,image,x,y,w,h){
+  const ratio=Math.max(w/image.width,h/image.height),rw=image.width*ratio,rh=image.height*ratio;
+  ctx.drawImage(image,x+(w-rw)/2,y+(h-rh)/2,rw,rh);
+ }
+ function printLines(ctx,str,x,y,size,width,limit,color){
+  ctx.font='800 '+size+'px "Malgun Gothic","Apple SD Gothic Neo",sans-serif';
+  ctx.fillStyle=color;ctx.textBaseline='top';
+  const lines=wrap(ctx,str,width,limit);
+  for(const line of lines){ctx.fillText(line,x,y,width);y+=size*1.2;}
+  return y;
+ }
+ async function draw(data,photos,settings){
+  const cfg=choices(settings),{w,h}=FORMATS[cfg.format],style=STYLES[cfg.template];
+  const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+  const c=canvas.getContext('2d');if(!c)throw Error('브라우저 이미지 제작을 지원하지 않습니다.');
+  c.fillStyle=style.background;c.fillRect(0,0,w,h);
+  const photosArr=verifyPhotos(Array.isArray(photos)?photos:photos?[photos]:[]);
+  if(photosArr.length){
+   const front=photosArr[cfg.selectedIndex]||photosArr[0];
+   const arranged=[front,...photosArr.filter(f=>f!==front)].slice(0,cfg.layout==='collage'?3:1);
+   const bitmaps=await Promise.all(arranged.map(photo=>createImageBitmap(photo)));
+   try{
+    if(cfg.layout==='collage'&&bitmaps.length>1){
+     const top=Math.round(h*.80),left=Math.round(w*.61),gap=7;
+     cover(c,bitmaps[0],0,0,left-gap/2,top);
+     if(bitmaps.length===2)cover(c,bitmaps[1],left+gap/2,0,w-left-gap/2,top);
+     else{
+      cover(c,bitmaps[1],left+gap/2,0,w-left-gap/2,top/2-gap/2);
+      cover(c,bitmaps[2],left+gap/2,top/2+gap/2,w-left-gap/2,top/2-gap/2);
+     }
+    }else cover(c,bitmaps[0],0,0,w,h);
+   }finally{bitmaps.forEach(b=>b.close?.());}
+  }else{
+   // Abstract graphic only; do not invent photographs of real facilities or pets.
+   c.fillStyle='#327480';c.beginPath();c.ellipse(w*.8,h*.23,w*.4,h*.17,-.3,0,Math.PI*2);c.fill();
+   c.fillStyle='#d5ac77';c.beginPath();c.arc(w*.74,h*.26,w*.10,0,Math.PI*2);c.fill();
+  }
+  const shade=c.createLinearGradient(0,0,0,h);
+  shade.addColorStop(0,'rgba(0,24,30,.48)');shade.addColorStop(.48,'rgba(0,24,30,.07)');
+  shade.addColorStop(.64,'rgba(0,24,30,.72)');shade.addColorStop(1,'rgba(0,24,30,.97)');
+  c.fillStyle=shade;c.fillRect(0,0,w,h);
+  c.strokeStyle='rgba(255,255,255,.75)';c.lineWidth=3;c.strokeRect(44,44,w-88,h-88);
+  printLines(c,'DONGBAEG · PENSION',82,94,34,910,1,'#fff7e8');
+  const titleTop=Math.round(h*(cfg.format==='feed'?.53:.64)),subtitleBottom=h-212;
+  c.fillStyle=style.accent;c.fillRect(82,titleTop-42,95,9);
+  let titleSize=cfg.format==='feed'?75:91,lines=3;
+  while(titleSize>48){
+   c.font='800 '+titleSize+'px "Malgun Gothic","Apple SD Gothic Neo",sans-serif';
+   const count=wrap(c,data.headline,905,lines).length;
+   if(titleTop+count*titleSize*1.2<h-(cfg.format==='feed'?270:330))break;
+   titleSize-=3;
+  }
+  const end=printLines(c,data.headline,82,titleTop,titleSize,905,lines,style.text);
+  const subtitleY=Math.max(titleTop+75,Math.min(subtitleBottom-68,end+21));
+  printLines(c,data.subtitle,86,subtitleY,cfg.format==='feed'?32:39,898,2,'#ffffff');
+  const footerY=h-155;c.fillStyle='#fff7e7';c.fillRect(78,footerY,924,100);
+  let ctaSize=38;
+  while(ctaSize>23){c.font='800 '+ctaSize+'px "Malgun Gothic","Apple SD Gothic Neo",sans-serif';if(c.measureText(data.cta).width<=850)break;ctaSize-=2;}
+  printLines(c,data.cta,108,footerY+(100-ctaSize)/2-2,ctaSize,850,1,'#224348');
+  return await new Promise((ok,bad)=>canvas.toBlob(blob=>blob?ok(blob):bad(Error('PNG 저장에 실패했습니다.')),'image/png'));
+ }
+ async function prepare(id,photos,chosen=0,settings){
   const incoming=verifyPhotos(Array.isArray(photos)?photos:photos?[photos]:[]);
   const old=await item('read',id);
   const saved=incoming.length?incoming:(old?.photos|| (old?.photo?[old.photo]:[]));
   const index=incoming.length?chosen:(old?.selectedIndex||0);
-  await item('write',id,{id,photo:saved[index]||saved[0]||null,photos:saved,selectedIndex:index,
+  await item('write',id,{id,photo:saved[index]||saved[0]||null,photos:saved,selectedIndex:index,options:choices(settings||old?.options),
    png:old?.png||null,design:old?.design||null,title:old?.title||'',updated:Date.now()});
  }
  async function generate(id,task){
   const old=await item('read',id)||{id,photo:null};
   const photos=old.photos|| (old.photo?[old.photo]:[]);
   const chosen=photos[old.selectedIndex||0]||old.photo||null;
-  const design=getDesign(task.designText,task),png=await draw(design,chosen);
+  const design=getDesign(task.designText,task),png=await draw(design,photos,{...old.options,selectedIndex:old.selectedIndex||0});
   await item('write',id,{...old,png,design,title:task.title,updated:Date.now()});
   scan();
-  return {size:png.size,hasPhoto:Boolean(chosen),photoCount:photos.length};
+  return {size:png.size,hasPhoto:Boolean(chosen),photoCount:photos.length,format:choices(old.options).format};
  }
  function download(row){
   const url=URL.createObjectURL(row.png),a=document.createElement('a');
@@ -137,7 +200,8 @@
   const shell=document.createElement('section');shell.className='db-poster-result';
   shell.style.cssText='margin:12px 0;padding:15px;background:#eef4e9;border:1px solid #becdb4;border-radius:10px';
   const h=document.createElement('h4');h.textContent='임민채 대리 · 실제 포스터 이미지';shell.append(h);
-  const desc=document.createElement('p');desc.textContent=row.png?'PNG 1080×1920 · 이 브라우저에 저장됨 · 게시 전 검토 필요':'포스터 생성이 미완료 상태입니다. 아래에서 다시 만들어 보세요.';shell.append(desc);
+  const shape=FORMATS[choices(row.options).format];
+  const desc=document.createElement('p');desc.textContent=row.png?'PNG '+shape.w+'×'+shape.h+' · '+shape.label+' · 브라우저 저장 · 게시 전 검토 필요':'포스터 생성이 미완료 상태입니다. 아래에서 다시 만들어 보세요.';shell.append(desc);
   const savedPhotos=row.photos||(row.photo?[row.photo]:[]);
   if(savedPhotos.length){
    const count=document.createElement('p');count.textContent='업로드된 실제 사진 '+savedPhotos.length+'장 · 대표 사진 '+((row.selectedIndex||0)+1)+'번';
@@ -150,6 +214,7 @@
   }
   const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='문구·사진 수정하기 (GPT 요금 없음)';
   details.append(summary);
+  const editSettings=settingsUI(row.options,'db-edit-'+row.id.slice(0,8));details.append(editSettings.root);
   const fields={};
   for(const [key,label,max] of [['headline','큰 제목',46],['subtitle','보조 문구',100],['cta','마지막 안내',65]]){
    const wrap=document.createElement('label');wrap.textContent=label;
@@ -181,11 +246,29 @@
     const photo=editPhotos[editIndex]||null;
     const design=Object.fromEntries(Object.entries(fields).map(([k,v])=>[k,clean(v.value,k==='subtitle'?100:65)]));
     if(!design.headline||!design.cta)throw Error('큰 제목과 마지막 안내를 적어 주세요.');
-    const png=await draw(design,photo);
-    await item('write',row.id,{...row,photo,photos:editPhotos,selectedIndex:editIndex,design,png,updated:Date.now()});
+    const options={...editSettings.get(),selectedIndex:editIndex};
+    const png=await draw(design,editPhotos,options);
+    await item('write',row.id,{...row,photo,photos:editPhotos,selectedIndex:editIndex,options,design,png,updated:Date.now()});
     shell.remove();scan();
    }catch(e){status.textContent=e.message||'수정 실패';}finally{edit.disabled=false;}
   };
+  if(window.DongbaekOfficeManual?.appendApprovedDesign){
+   const remember=document.createElement('section');remember.className='db-poster-learn';
+   remember.style.cssText='margin:12px 0;padding:10px;border:1px solid #b4c9b7;border-radius:8px';
+   const heading=document.createElement('strong');heading.textContent='대표님 디자인 수정 기준 저장 (선택)';
+   const explain=document.createElement('p');explain.textContent='이번 수정에서 앞으로도 지킬 원칙만 적어 저장하세요. 이전 작업 전체를 자동 학습하지 않습니다.';
+   const field=document.createElement('textarea');field.placeholder='예: 포스터 제목은 짧고 크게, 실제 사진을 우선 사용하세요.';field.rows=2;field.maxLength=320;field.style.cssText='display:block;width:100%;box-sizing:border-box;padding:8px';
+   const submit=document.createElement('button');submit.type='button';submit.textContent='이 기준을 다음 디자인 업무에도 적용';submit.style.marginTop='7px';
+   const result=document.createElement('p');result.setAttribute('role','status');
+   submit.onclick=()=>{
+    const note=field.value.trim();
+    if(!note){result.textContent='저장할 기준을 먼저 적어 주세요.';return;}
+    if(!window.confirm('입력한 디자인 기준을 임민채 대리 업무 매뉴얼에 저장하고 이후 새 업무에 적용할까요?'))return;
+    try{window.DongbaekOfficeManual.appendApprovedDesign(note);result.textContent='매뉴얼 저장 완료. 이후 새 디자인 업무에 적용됩니다.';field.value='';}
+    catch(e){result.textContent=e.message||'기준을 저장할 수 없습니다.';}
+   };
+   remember.append(heading,explain,field,submit,result);details.append(remember);
+  }
   shell.append(details);card.append(shell);
  }
  async function scan(){
@@ -196,6 +279,7 @@
  }
  function install(form){
   const label=document.createElement('div');label.textContent='실제 사진 (선택) · 최대 5장 · 각 8MB 이하 · 전체 30MB 이하';
+  creationSettings=settingsUI({},'db-new-poster');label.append(creationSettings.root);
   const input=document.createElement('input');input.type='file';input.multiple=true;input.accept='image/jpeg,image/png,image/webp';input.id='db-manager-photo';label.append(input);
   const note=document.createElement('small');note.textContent='여러 사진을 선택하고 대표 사진 1장을 지정하세요. 사진 전체는 이 브라우저에 저장되고, 현재 포스터는 대표 사진 1장으로 제작됩니다. 외부 AI 서버로 보내지 않습니다.';note.style.display='block';label.append(note);
   let gallery=null;
@@ -219,6 +303,6 @@
   };
   document.addEventListener('dongbaek-ai-jobs',scan);scan();
  }
- window.DongbaekPosterStudio=Object.freeze({install,prepare,generate,scan,selectedPhoto:()=>selected.slice(),selectedPhotoIndex:()=>selectedIndex,
+ window.DongbaekPosterStudio=Object.freeze({install,prepare,generate,scan,selectedPhoto:()=>selected.slice(),selectedPhotoIndex:()=>selectedIndex,selectedOptions:()=>creationSettings?.get()||{format:'story',template:'coastal',layout:'single'},
   available:async()=>{try{const d=await openDB();d.close();return true;}catch{return false;}}});
 })();

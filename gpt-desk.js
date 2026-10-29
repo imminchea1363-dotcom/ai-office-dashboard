@@ -168,7 +168,7 @@
   try {
    if(record.design && !record.photoPrepared){
     if(!posterStudio)throw new Error('포스터 제작 도구가 설치되어 있지 않습니다.');
-    await posterStudio.prepare(record.parentId,quickParentId===record.parentId?posterStudio.selectedPhoto():[],quickParentId===record.parentId?posterStudio.selectedPhotoIndex():0);
+    await posterStudio.prepare(record.parentId,quickParentId===record.parentId?posterStudio.selectedPhoto():[],quickParentId===record.parentId?posterStudio.selectedPhotoIndex():0,quickParentId===record.parentId?posterStudio.selectedOptions():undefined);
     record.photoPrepared=true;
     if(!saveManager())throw new Error('사진 준비 상태를 저장하지 못해 GPT 실행을 중단했습니다.');
    }
