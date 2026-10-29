@@ -123,7 +123,7 @@ const assert = require('node:assert/strict');
   assert.match(await page.locator('#db-manager-quick-run').textContent(),/5회/);
   await page.click('#db-manager-quick-run');
   await page.waitForFunction(()=>document.querySelector('#db-gpt-status').textContent.includes('총괄 보고서 작성 완료'),null,{timeout:12000});
-  assert.equal(writes.length,13,'Design task requires five role-specific calls on top of two four-call runs');
+  assert.equal(writes.length,13,'Design task requires 5 calls: status='+await page.locator('#db-gpt-status').textContent()+'; quick='+await page.locator('#db-manager-quick-progress').textContent()+'; errors='+JSON.stringify(errors));
   assert.deepEqual(writes.slice(8).map(w=>w.title),[
     '동백총괄매니저 · 직원별 업무 배정',
     '임채리사원 · 자료조사 업무',
