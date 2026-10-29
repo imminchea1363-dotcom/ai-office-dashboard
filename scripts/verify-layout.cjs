@@ -82,7 +82,7 @@ const server = http.createServer((req, res) => {
     }
     console.log('PASS layouts: before/after screenshots, seated garden dog, one dog per view, six distinct pantry seats with supports, mobile width, no JS/resource errors');
   } finally {await browser.close();}
-  for (const test of ['smoke.cjs','scene-details.cjs','radio.cjs','recovery.cjs','ai-desk.cjs','gpt-desk.cjs','gpt-manager.cjs','gpt-manager-preview.cjs','office-archive.cjs','office-sns.cjs']) {
+  for (const test of ['smoke.cjs','scene-details.cjs','radio.cjs','recovery.cjs','ai-desk.cjs','gpt-desk.cjs','gpt-manager.cjs','gpt-manager-preview.cjs','office-archive.cjs','office-sns.cjs','office-pipeline.cjs']) {
     const result = await run(process.execPath,[path.join(root,'tests',test)],{cwd:root,env:{...process.env,APP_TEST_URL:base,PWA_TEST_URL:base+'dist/dongbaek-pwa/'},timeout:120000,maxBuffer:1024*1024});
     process.stdout.write(result.stdout);
   }
