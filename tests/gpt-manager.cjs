@@ -1,4 +1,5 @@
 const {chromium} = require('playwright');
+const fs = require('node:fs');
 const assert = require('node:assert/strict');
 
 (async () => {
@@ -6,7 +7,7 @@ const assert = require('node:assert/strict');
  const base = process.env.APP_TEST_URL || 'http://localhost:3000';
  const api = 'https://dongbaek-api.imminchea1363.workers.dev';
  const secret = 'mock-office-password-24chars';
- const context = await browser.newContext({viewport:{width:1280,height:860},serviceWorkers:'block'});
+ const context = await browser.newContext({viewport:{width:1280,height:860},serviceWorkers:'block',acceptDownloads:true});
  const page = await context.newPage();
  const errors = [], writes = [], reads = [], generated = new Map();
  let interruptSecondRun = false, secondRunCount = 0;
@@ -71,6 +72,17 @@ const assert = require('node:assert/strict');
   assert.match(await page.locator('#db-ai-jobs').textContent(),/임채리 조사 결과/);
   assert.equal(await page.locator('#db-ai-jobs img').count(),0);
   assert.match(await page.locator('.db-ai-badge').first().textContent(),/대표에게 이동 중|보고 완료/,'Manager task must automatically enter representative reporting flow');
+  const wordDownload=page.waitForEvent('download');
+  await page.locator('[data-ai-docx]').first().click();
+  const downloaded=await wordDownload;
+  assert.match(downloaded.suggestedFilename(),/\.docx$/);
+  const bytes=fs.readFileSync(await downloaded.path());
+  assert.equal(bytes[0],80);assert.equal(bytes[1],75);
+  const binary=bytes.toString('utf8');
+  assert.match(binary,/word\/document\.xml/);
+  assert.match(binary,/임채리대리 자료조사/);
+  assert.match(binary,/최종 매니저 보고/);
+  assert.doesNotMatch(binary,/총괄매니저 업무 배정 기록/);
   const saved=await page.evaluate(()=>JSON.stringify({...localStorage}));
   assert.ok(!saved.includes(secret));
   await page.reload();
