@@ -114,8 +114,8 @@
    '## 김검수사원 검수',
    record.parts[2].result,
    '',
-   '## 총괄매니저 업무 배정 기록',
-   record.parts[0].result
+   '## 실행 전 확인',
+   '위 권고사항을 실행하기 전 미확인 비용·시장 데이터와 자동화 연동 가능 여부를 따로 검증하세요.'
   ].join('\n').slice(0, 20000);
  }
  async function runManager(record) {
