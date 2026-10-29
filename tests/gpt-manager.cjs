@@ -48,6 +48,9 @@ const assert = require('node:assert/strict');
  }
  try {
   await page.goto(base);
+  assert.equal(await page.locator('#db-manager-photo').count(),1,'Poster photo selector must be mounted on load');
+  assert.equal(await page.locator('#db-manager-photo').isVisible(),true,'Poster photo selector must be visible to user');
+  assert.match(await page.locator('#db-manager-quick-form').textContent(),/실제 사진/);
   assert.equal(await page.locator('#db-manager-run').isDisabled(),true);
   await page.selectOption('#db-ai-worker','2');
   assert.equal(await page.locator('#db-manager-run').isVisible(),false);
