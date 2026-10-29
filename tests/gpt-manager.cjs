@@ -51,13 +51,23 @@ const assert = require('node:assert/strict');
   assert.equal(await page.locator('#db-manager-run').isDisabled(),true);
   await page.selectOption('#db-ai-worker','2');
   assert.equal(await page.locator('#db-manager-run').isVisible(),false);
+  assert.equal(await page.locator('#db-manager-quick-run').isDisabled(),true);
   await page.selectOption('#db-ai-worker','1');
   await page.selectOption('#db-ai-service','chatgpt');
   await connect();
   assert.equal(await page.locator('#db-manager-run').isVisible(),true);
-  await page.fill('#db-ai-title','총괄 자동 조사 1');
-  await page.fill('#db-ai-brief','가상의 쿠팡 판매상품 후보를 분석해 주세요. 실제 조회는 하지 않습니다.');
-  await page.click('#db-manager-run');
+  await page.selectOption('#db-ai-worker','2');
+  await page.selectOption('#db-ai-service','claude');
+  assert.equal(await page.locator('#db-manager-run').isVisible(),false);
+  await page.fill('#db-manager-quick-title','총괄 자동 조사 1');
+  await page.fill('#db-manager-quick-brief','가상의 쿠팡 판매상품 후보를 분석해 주세요. 실제 조회는 하지 않습니다.');
+  await page.click('#db-manager-quick-run');
+  await page.waitForFunction(()=>document.querySelector('#db-manager-quick-progress').textContent.includes('4단계 완료'));
+  assert.equal(await page.locator('#db-ai-worker').inputValue(),'1');
+  assert.equal(await page.locator('#db-ai-service').inputValue(),'chatgpt');
+  assert.equal(await page.locator('#db-ai-title').inputValue(),'총괄 자동 조사 1');
+  assert.equal(await page.locator('#db-ai-brief').inputValue(),'가상의 쿠팡 판매상품 후보를 분석해 주세요. 실제 조회는 하지 않습니다.');
+  assert.equal(await page.locator('#db-manager-quick-stages li[data-state="done"]').count(),4);
   try { await page.waitForFunction(() => document.querySelector('#db-gpt-status').textContent.includes('총괄 보고서 작성 완료'),null,{timeout:10000}); }
   catch(e) {throw new Error('Manager status: '+await page.locator('#db-gpt-status').textContent()+'; writes='+JSON.stringify(writes.map(x=>x.title))+'; errors='+JSON.stringify(errors)+'; original='+e.message);}
   assert.equal(writes.length,4);
