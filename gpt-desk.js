@@ -33,13 +33,14 @@
  const quickStatus=(step,note)=>{quickProgress.textContent=note;quickStages.forEach((li,index)=>{li.dataset.state=index<step?'done':index===step?'active':'waiting';});};
  $('db-manager-quick-results').onclick=()=>{document.getElementById('db-ai-jobs').scrollIntoView({behavior:'smooth',block:'start'});};
  const managerKey = 'dongbaek-manager-runs-v1';
+ function wantsVideo(job){return /영상|릴스|숏폼|쇼츠|shorts|reels|틱톡|편집|15초|동영상/i.test([job.title,job.brief,job.output].join(' '));}
  function wantsDesign(job){
   const text=[job.title,job.brief,job.output].join(' ');
-  return /디자인|포스터|썸네일|배너|카드뉴스|로고|이미지|시각|광고소재/.test(text);
+  return /디자인|포스터|썸네일|배너|카드뉴스|로고|이미지|시각|광고소재/.test(text)||wantsVideo(job);
  }
  function planSteps(job){
   return wantsDesign(job)
-   ? ['동백총괄매니저 업무 배정','임채리사원 자료조사','임민채대리 디자인 기획','김검수사원 검수','동백총괄매니저 최종 보고']
+   ? ['동백총괄매니저 업무 배정','임채리사원 자료조사','임민채대리 디자인·영상 기획','김검수사원 검수','동백총괄매니저 최종 보고']
    : ['동백총괄매니저 업무 배정','임채리사원 자료조사','김검수사원 검수','동백총괄매니저 최종 보고'];
  }
  function renderSteps(job){
@@ -117,7 +118,7 @@
   const common = '원래 대표 지시: ' + brief + '\n[대표 승인 업무 매뉴얼]\n' + (officeManual?officeManual.forStage(stage,design):'정보를 지어내지 말고 미확인 사항을 구분하세요.') + '\n검증되지 않은 상품 가격·시장 정보는 사실로 쓰지 마세요. 인터넷 검색 기능이 연결되지 않았으므로 실시간 조회를 했다고 주장하지 마세요.';
   if (stage === 0) return {
    title: '동백총괄매니저 · 직원별 업무 배정',
-   brief: common + (design?'\n임채리사원(자료조사), 임민채대리(디자인 기획), 김검수사원(검수)에게 업무를 배정하세요. 디자인 단계는 이미지 제작이 아닌 시각 콘셉트·구성·제작 지침 작성입니다.':'\n임채리사원(자료조사)와 김검수사원(검수)에게 업무를 배정하세요.') + '\n마지막에 대표에게 보고할 평가 기준을 제시하세요.',
+   brief: common + (design?'\n임채리사원(자료조사), 임민채대리(디자인·영상 기획), 김검수사원(검수)에게 업무를 배정하세요. 디자인·영상 단계에서는 15초 영상 컷 구성 또는 포스터 문구를 기획합니다. 실제 파일을 만들기 전에는 제작 완료를 주장하지 마세요.':'\n임채리사원(자료조사)와 김검수사원(검수)에게 업무를 배정하세요.') + '\n마지막에 대표에게 보고할 평가 기준을 제시하세요.',
    output: '직원별 업무 지시'
   };
   if (stage === 1) return {
@@ -126,9 +127,9 @@
    output: '자료조사 결과'
   };
   if (stage === 2 && design) return {
-   title: '임민채대리 · 디자인 기획',
-   brief: common + '\n동백총괄매니저의 배정:\n' + plan + '\n임채리사원 조사:\n' + research + '\n세로형 홍보 포스터의 문구를 생성하세요. 반드시 JSON 객체 하나만 반환: {"headline":"간결한 큰 제목","subtitle":"확인된 장점만 설명","cta":"실제로 확인된 예약 안내"}. 가격, 할인, 예약 가능일, 시설을 지어내지 마세요. 실제 사진이나 포스터 이미지는 생성했다고 주장하지 마세요.',
-   output: '디자인 제작 지침 JSON'
+   title: '임민채대리 · 디자인·영상 기획',
+   brief: common + '\n동백총괄매니저의 배정:\n' + plan + '\n임채리사원 조사:\n' + research + (record.video ? '\n실제 촬영 소스를 기준으로 15초 세로 숏폼 0~2초 후킹, 2~5초, 5~9초, 9~12초, 12~15초 컷 구성·자막·CTA와 검수 사항을 작성하세요. 동영상을 완성했다고 주장하지 마세요.' : '\n세로형 홍보 포스터의 문구를 생성하세요. 반드시 JSON 객체 하나만 반환: {"headline":"간결한 큰 제목","subtitle":"확인된 장점만 설명","cta":"실제로 확인된 예약 안내"}. 가격, 할인, 예약 가능일, 시설을 지어내지 마세요. 실제 사진이나 포스터 이미지는 생성했다고 주장하지 마세요.'),
+   output: record.video?'15초 영상 콘티·자막·제작 지침':'디자인 제작 지침 JSON'
 
   };
   if (stage === 2 || (stage === 3 && design)) return {
@@ -152,12 +153,12 @@
    '',
    '## 임채리사원 자료조사',
    record.parts[1].result,
-   ...(record.design===true?['','## 임민채대리 디자인 기획',record.parts[2].result]:[]),
+   ...(record.design===true?['','## 임민채대리 디자인·영상 기획',record.parts[2].result]:[]),
    '',
    '## 김검수사원 검수',
    record.parts[record.design===true?3:2].result,
    '',
-   ...(record.design===true?['','## 포스터 이미지','임민채 대리가 실제 PNG 포스터를 만들어 업무와 결과 보고함에 별도 저장했습니다. 아래 이미지에서 확인하고 내려받으세요.']:[]),
+   ...(record.design===true?(record.video?['','## 영상 제작','실제 영상 파일은 임민채 대리 영상 제작실에서 별도 제작해야 합니다.']:['','## 포스터 이미지','임민채 대리가 실제 PNG 포스터를 만들어 업무와 결과 보고함에 별도 저장했습니다. 아래 이미지에서 확인하고 내려받으세요.']):[]),
    '## 실행 전 확인',
    '위 권고사항을 실행하기 전 미확인 비용·시장 데이터와 자동화 연동 가능 여부를 따로 검증하세요.'
   ].join('\n').slice(0, 20000);
@@ -166,7 +167,7 @@
   if (!connected || busy) return;
   busy = true; update();
   try {
-   if(record.design && !record.photoPrepared){
+   if(record.design && !record.video && !record.photoPrepared){
     if(!posterStudio)throw new Error('포스터 제작 도구가 설치되어 있지 않습니다.');
     await posterStudio.prepare(record.parentId,quickParentId===record.parentId?posterStudio.selectedPhoto():[],quickParentId===record.parentId?posterStudio.selectedPhotoIndex():0,quickParentId===record.parentId?posterStudio.selectedOptions():undefined);
     record.photoPrepared=true;
@@ -176,7 +177,7 @@
     const index = record.stage, part = record.parts[index], task = stageTask(record, index);
     // Generate a real PNG after the designer step, before charging for QA.
     // If local image storage fails, preserve completed paid stages and allow safe recovery.
-    if(record.design && index===3 && !record.posterReady){
+    if(record.design && !record.video && index===3 && !record.posterReady){
      if(!posterStudio)throw new Error('브라우저 포스터 제작 도구를 찾지 못했습니다.');
      message('임민채 대리 · 포스터 PNG를 생성하고 브라우저에 저장하고 있습니다.');
      await posterStudio.generate(record.parentId,{title:record.title,brief:record.brief,designText:record.parts[2].result});
@@ -218,7 +219,7 @@
   if (!job) return;
   if(quick.dataset.launching==='yes') quickParentId=job.id;
   const record = {
-   parentId: job.id, title: job.title, brief: job.brief, output: job.output, design: wantsDesign(job), stage: 0,
+   parentId: job.id, title: job.title, brief: job.brief, output: job.output, design: wantsDesign(job), video: wantsVideo(job), stage: 0,
    parts: Array.from({length: planSteps(job).length}, () => ({ id: crypto.randomUUID(), attempted: false, result: '' }))
   };
   managerRuns[job.id] = record;
