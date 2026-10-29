@@ -24,7 +24,8 @@
    );
    const central=concat(
     [0x50,0x4b,0x01,0x02],u16(20),u16(20),u16(0x0800),u16(0),
-    u16(0),u16(0),u32(0),u32(offset),filename
+    u16(0),u16(0),u32(crc),u32(contents.length),u32(contents.length),u16(filename.length),u16(0),
+    u16(0),u16(0),u16(0),u32(0),u32(offset),filename
    );
    data.push(local);directory.push(central);offset+=local.length;
   }
