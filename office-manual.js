@@ -27,7 +27,9 @@
    const keys=stage===0?['common','manager']:stage===1?['common','research']:
     design&&stage===2?['common','design']:
     stage===(design?3:2)?['common','review']:['common','manager'];
-   return keys.map(k=>'['+k+'] '+rules[k]).join('\n').slice(0,2800);
+   const rule=keys.map(k=>'['+k+'] '+rules[k]).join('\n');
+   const videoBaseline=design&&stage===2?'\n[확정 담당 범위] 임민채 대리는 이미지 디자인과 영상 편집·제작 모두 담당합니다. 15초 세로 숏폼은 실제 촬영본 우선, 가독성 높은 자막, 정확한 CTA, 대표 승인 후 게시가 원칙입니다.':'';
+   return (rule+videoBaseline).slice(0,2800);
   },
   read:()=>({...rules}),
   defaults:()=>({...defaults}),
