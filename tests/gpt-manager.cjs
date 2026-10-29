@@ -56,7 +56,7 @@ const assert = require('node:assert/strict');
   await page.fill('#db-ai-title','총괄 자동 조사 1');
   await page.fill('#db-ai-brief','가상의 쿠팡 판매상품 후보를 분석해 주세요. 실제 조회는 하지 않습니다.');
   await page.click('#db-manager-run');
-  try { await page.waitForFunction(() => document.querySelector('#db-gpt-status').textContent.includes('종합 보고서 작성 완료'),null,{timeout:10000}); }
+  try { await page.waitForFunction(() => document.querySelector('#db-gpt-status').textContent.includes('총괄 보고서 작성 완료'),null,{timeout:10000}); }
   catch(e) {throw new Error('Manager status: '+await page.locator('#db-gpt-status').textContent()+'; writes='+JSON.stringify(writes.map(x=>x.title))+'; errors='+JSON.stringify(errors)+'; original='+e.message);}
   assert.equal(writes.length,4);
   assert.deepEqual(writes.map(w=>w.title),[
@@ -87,7 +87,7 @@ const assert = require('node:assert/strict');
   await connect();
   interruptSecondRun=false;
   await page.locator('.db-manager-recovery button').click();
-  await page.waitForFunction(() => document.querySelector('#db-gpt-status').textContent.includes('종합 보고서 작성 완료'));
+  await page.waitForFunction(() => document.querySelector('#db-gpt-status').textContent.includes('총괄 보고서 작성 완료'));
   assert.equal(reads.length,1);
   assert.equal(writes.length,8,'An uncertain GPT stage must be recovered without repeating its paid POST');
   assert.match(await page.locator('.db-ai-task').first().textContent(),/최종 매니저 보고/);
