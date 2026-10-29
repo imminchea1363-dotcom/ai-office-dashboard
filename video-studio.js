@@ -33,12 +33,12 @@
   const ratio=Math.max(360/sw,640/sh),w=sw*ratio,h=sh*ratio;
   ctx.drawImage(source,(360-w)/2,(640-h)/2,w,h);
  }
- function wrapped(s,y,size,maxLines){
+ function wrapped(s,y,size,maxLines,color='#fff'){
   ctx.font='800 '+size+'px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.textBaseline='top';
   const parts=clean(s,85).split(/\s+/);let line='',lines=[];
   for(const part of parts){const next=line?line+' '+part:part;if(ctx.measureText(next).width>310&&line){lines.push(line);line=part;}else line=next;}
   if(line)lines.push(line);
-  lines=lines.slice(0,maxLines);ctx.fillStyle='#fff';
+  lines=lines.slice(0,maxLines);ctx.fillStyle=color;
   for(const text of lines){ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=7;ctx.fillText(text,180,y,320);ctx.shadowBlur=0;y+=size*1.24;}
  }
  function drawFrame(asset,sec){
@@ -49,7 +49,7 @@
   ctx.strokeStyle='rgba(255,255,255,.7)';ctx.lineWidth=1;ctx.strokeRect(18,18,324,604);
   if(sec<2)wrapped(title.value||'동백팬션에서 쉬어가요',65,31,3);
   if(sec>=2&&sec<12)wrapped(subtitle.value||'바다를 바라보며 즐기는 휴식',455,24,3);
-  if(sec>=12){ctx.fillStyle='rgba(255,247,224,.96)';ctx.fillRect(20,496,320,100);ctx.fillStyle='#17463f';ctx.font='800 19px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillText('예약·상세 안내',180,529);ctx.fillStyle='#17463f';wrapped(cta.value||'네이버에서 포항 동백팬션 검색',552,19,2);}
+  if(sec>=12){ctx.fillStyle='rgba(255,247,224,.96)';ctx.fillRect(20,496,320,100);ctx.fillStyle='#17463f';ctx.font='800 19px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillText('예약·상세 안내',180,529);ctx.fillStyle='#17463f';wrapped(cta.value||'네이버에서 포항 동백팬션 검색',552,19,2,'#17463f');}
   ctx.fillStyle='rgba(255,255,255,.85)';ctx.fillRect(20,610,320*Math.min(1,sec/15),4);
  }
  function clear(){
