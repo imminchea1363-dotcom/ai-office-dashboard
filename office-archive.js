@@ -186,7 +186,7 @@
    const archive=JSON.parse(await file.text());
    if(archive.format!=='dongbaek-office-full-backup'||archive.version!==1)throw Error('이 기능에서 만든 전체 백업 파일이 아닙니다.');
    const desk=parseState(archive.data);
-   const current=parseDesk(stored(JOB));
+   const current=parseDesk(stored(JOB)||JSON.stringify({jobs:[]}));
    if(hasActive(current))throw Error('현재 진행 중인 GPT 작업이 있습니다. 먼저 결과 확인 또는 작업 종료 후 복원하세요.');
    if(hasActive(desk))throw Error('백업에 진행 중인 GPT 작업이 있어 안전한 자동 복원을 제한했습니다.');
    if(Object.keys(JSON.parse(archive.data.manager||'{}')).length||Object.keys(JSON.parse(archive.data.previewManager||'{}')).length)throw Error('중단된 총괄 업무 단계가 저장된 백업은 복원할 수 없습니다.');
