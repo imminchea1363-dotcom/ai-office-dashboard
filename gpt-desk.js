@@ -78,25 +78,25 @@
   const plan = (record.parts[0].result || '').slice(0, 1000);
   const research = (record.parts[1].result || '').slice(0, 1400);
   const review = (record.parts[2].result || '').slice(0, 1000);
-  const common = '원래 대표 지시: ' + brief + '\\n검증되지 않은 상품 가격·시장 정보는 사실로 쓰지 마세요. 인터넷 검색 기능이 연결되지 않았으므로 실시간 조회를 했다고 주장하지 마세요.';
+  const common = '원래 대표 지시: ' + brief + '\n검증되지 않은 상품 가격·시장 정보는 사실로 쓰지 마세요. 인터넷 검색 기능이 연결되지 않았으므로 실시간 조회를 했다고 주장하지 마세요.';
   if (stage === 0) return {
    title: '동백총괄매니저 · 직원별 업무 배정',
-   brief: common + '\\n임채리대리(자료조사)와 김검수사원(검수)에게 맡길 일을 구체적으로 나눠 지시하세요. 마지막에 대표에게 보고할 평가 기준을 제시하세요.',
+   brief: common + '\n임채리대리(자료조사)와 김검수사원(검수)에게 맡길 일을 구체적으로 나눠 지시하세요. 마지막에 대표에게 보고할 평가 기준을 제시하세요.',
    output: '직원별 업무 지시'
   };
   if (stage === 1) return {
    title: '임채리대리 · 자료조사 업무',
-   brief: common + '\\n동백총괄매니저의 업무 배정:\\n' + plan + '\\n자료조사 담당자로서 지시 범위 내에서 가능한 분석을 수행하고 출처 미확인·추가 확인 필요 항목을 구분하세요.',
+   brief: common + '\n동백총괄매니저의 업무 배정:\n' + plan + '\n자료조사 담당자로서 지시 범위 내에서 가능한 분석을 수행하고 출처 미확인·추가 확인 필요 항목을 구분하세요.',
    output: '자료조사 결과'
   };
   if (stage === 2) return {
    title: '김검수사원 · 자료 검수',
-   brief: common + '\\n총괄의 배정 내용:\\n' + plan + '\\n자료조사 결과:\\n' + research + '\\n과장, 허위 사실, 수익 계산 오류, 추가 검증할 사항을 평가하세요.',
+   brief: common + '\n총괄의 배정 내용:\n' + plan + '\n자료조사 결과:\n' + research + '\n과장, 허위 사실, 수익 계산 오류, 추가 검증할 사항을 평가하세요.',
    output: '검수 보고서'
   };
   return {
    title: '동백총괄매니저 · 최종 종합 보고',
-   brief: common + '\\n자료조사 결과:\\n' + research + '\\n검수 의견:\\n' + review + '\\n직원 보고를 종합해 대표가 결정할 사항, 근거 부족한 사항, 다음 실행 제안을 구분해 작성하세요. 실제 외부 조사를 완료했다고 말하지 마세요.',
+   brief: common + '\n자료조사 결과:\n' + research + '\n검수 의견:\n' + review + '\n직원 보고를 종합해 대표가 결정할 사항, 근거 부족한 사항, 다음 실행 제안을 구분해 작성하세요. 실제 외부 조사를 완료했다고 말하지 마세요.',
    output: record.output.slice(0, 80)
   };
  }
@@ -116,7 +116,7 @@
    '',
    '## 총괄매니저 업무 배정 기록',
    record.parts[0].result
-  ].join('\\n').slice(0, 20000);
+  ].join('\n').slice(0, 20000);
  }
  async function runManager(record) {
   if (!connected || busy) return;
