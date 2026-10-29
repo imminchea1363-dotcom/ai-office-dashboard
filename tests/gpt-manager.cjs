@@ -155,7 +155,7 @@ const assert = require('node:assert/strict');
   assert.deepEqual(writes.slice(8).map(w=>w.title),[
     '동백총괄매니저 · 직원별 업무 배정',
     '임채리사원 · 자료조사 업무',
-    '임민채대리 · 디자인 기획',
+    '임민채대리 · 디자인·영상 기획',
     '김검수사원 · 자료 검수',
     '동백총괄매니저 · 최종 종합 보고'
   ]);
