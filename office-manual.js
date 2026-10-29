@@ -30,7 +30,20 @@
    return keys.map(k=>'['+k+'] '+rules[k]).join('\n').slice(0,2800);
   },
   read:()=>({...rules}),
-  defaults:()=>({...defaults})
+  defaults:()=>({...defaults}),
+  appendApprovedDesign:(note)=>{
+   const value=clean(note);
+   if(!value||value.length<8)throw Error('앞으로 기억할 디자인 기준을 8자 이상 적어 주세요.');
+   if(value.length>320)throw Error('한 번에 저장할 기준은 320자 이하로 적어 주세요.');
+   const next={...rules};
+   if(next.design.includes(value))return true;
+   if((next.design+'\n- '+value).length>MAX)throw Error('매뉴얼 저장 공간이 부족합니다. 기존 디자인 기준을 정리해 주세요.');
+   next.design=next.design+'\n- '+value;
+   if(!save(next))throw Error('브라우저에 매뉴얼을 저장하지 못했습니다.');
+   const manual=document.querySelector('#db-manual');
+   if(manual){const fields=manual.querySelectorAll('textarea');if(fields[3])fields[3].value=next.design;}
+   return true;
+  }
  };
  function install(target){
   if(!target||document.getElementById('db-manual'))return;
