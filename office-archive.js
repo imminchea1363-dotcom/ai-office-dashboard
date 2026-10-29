@@ -6,6 +6,7 @@
  const MANUAL='dongbaek-office-manual-v1';
  const MANAGER='dongbaek-manager-runs-v1';
  const PREVIEW_MANAGER='dongbaek-manager-preview-runs-v1';
+ const SNS='dongbaek-sns-workflow-v1';
  const DB='dongbaek-poster-studio-v1';
  const MAX_BINARY=80*1024*1024, MAX_FILE=145*1024*1024;
  const section=document.getElementById('db-ai-desk'),list=document.getElementById('db-ai-jobs');
@@ -32,7 +33,7 @@
  function stored(key){try{return localStorage.getItem(key)||'';}catch{return '';}}
  function isActiveJob(job){return job&&['pending','generating'].includes(job.status);}
  function parseDesk(value){
-  const data=JSON.parse(value||'{}');
+  const data=JSON.parse(value||'{"jobs":[]}');
   if(!data||typeof data!=='object'||!Array.isArray(data.jobs)||data.jobs.length>100)throw Error('백업에 업무 기록이 없거나 형식이 올바르지 않습니다.');
   if(data.jobs.some(j=>!j||typeof j.id!=='string'||j.id.length>100||!Number.isInteger(j.workerId)))throw Error('업무 ID 또는 담당 직원 정보가 올바르지 않습니다.');
   const ids=new Set(data.jobs.map(j=>j.id));if(ids.size!==data.jobs.length)throw Error('업무 ID가 중복되어 있습니다.');
@@ -40,16 +41,18 @@
  }
  function hasActive(data){return data.jobs.some(isActiveJob);}
  function makeState(){
-  return {desk:stored(JOB),manual:stored(MANUAL),manager:stored(MANAGER),previewManager:stored(PREVIEW_MANAGER)};
+  return {desk:stored(JOB)||JSON.stringify({jobs:[],assignments:{}}),manual:stored(MANUAL)||'{}',manager:stored(MANAGER)||'{}',previewManager:stored(PREVIEW_MANAGER)||'{}',sns:stored(SNS)||'{"entries":[]}'};
  }
  function parseState(data){
-  if(!data||typeof data!=='object'||typeof data.desk!=='string'||typeof data.manual!=='string'||typeof data.manager!=='string'||typeof data.previewManager!=='string')throw Error('전체 백업 형식이 아닙니다.');
+  if(!data||typeof data!=='object'||typeof data.desk!=='string'||typeof data.manual!=='string'||typeof data.manager!=='string'||typeof data.previewManager!=='string'||(data.sns!==undefined&&typeof data.sns!=='string'))throw Error('전체 백업 형식이 아닙니다.');
   const desk=parseDesk(data.desk);
-  if(data.desk.length>3*1024*1024||data.manual.length>12000||data.manager.length>900000||data.previewManager.length>900000)throw Error('백업 내 텍스트 크기가 허용 범위를 초과했습니다.');
+  if(data.desk.length>3*1024*1024||data.manual.length>12000||data.manager.length>900000||data.previewManager.length>900000||(data.sns||'').length>2000000)throw Error('백업 내 텍스트 크기가 허용 범위를 초과했습니다.');
   for(const value of [data.manager,data.previewManager]){
    const parsed=JSON.parse(value||'{}');
    if(!parsed||typeof parsed!=='object'||Array.isArray(parsed)||Object.keys(parsed).length>100)throw Error('중단 업무 저장 형식이 올바르지 않습니다.');
   }
+  const planned=JSON.parse(data.sns||'{"entries":[]}');
+  if(!planned||typeof planned!=='object'||!Array.isArray(planned.entries)||planned.entries.length>250)throw Error('SNS 게시 계획 백업이 올바르지 않습니다.');
   const manual=JSON.parse(data.manual||'{}');
   if(!manual||typeof manual!=='object'||Array.isArray(manual))throw Error('직원 매뉴얼 형식이 올바르지 않습니다.');
   return desk;
@@ -75,6 +78,7 @@
    const tx=db.transaction('files','readwrite');
    tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error||Error('사진 저장 실패'));tx.onabort=()=>reject(tx.error||Error('사진 저장 중단'));
    const store=tx.objectStore('files');
+   store.clear();
    for(const value of posters)store.put(value);
   });}finally{db.close();}
  }
@@ -188,19 +192,22 @@
    const desk=parseState(archive.data);
    const current=parseDesk(stored(JOB)||JSON.stringify({jobs:[]}));
    if(hasActive(current))throw Error('현재 진행 중인 GPT 작업이 있습니다. 먼저 결과 확인 또는 작업 종료 후 복원하세요.');
+   if(Object.keys(JSON.parse(stored(MANAGER)||'{}')).length||Object.keys(JSON.parse(stored(PREVIEW_MANAGER)||'{}')).length)throw Error('현재 중단·대기 중인 총괄매니저 작업이 있어 복원할 수 없습니다. 결과를 확인하고 완료해 주세요.');
    if(hasActive(desk))throw Error('백업에 진행 중인 GPT 작업이 있어 안전한 자동 복원을 제한했습니다.');
    if(Object.keys(JSON.parse(archive.data.manager||'{}')).length||Object.keys(JSON.parse(archive.data.previewManager||'{}')).length)throw Error('중단된 총괄 업무 단계가 저장된 백업은 복원할 수 없습니다.');
    const photos=revivePosters(archive.posters,desk);
    const proceed=window.confirm('현재 이 브라우저의 업무 기록·직원 매뉴얼을 선택한 백업 내용으로 교체합니다. 기존 자료를 백업했나요? 복원 후 화면을 새로고침합니다.');
    if(!proceed){status.textContent='복원을 취소했습니다. 현재 기록은 유지됩니다.';return;}
-   // Commit images in a single IndexedDB transaction; leave old jobs and images not present in the backup untouched.
+   // Keep the old images for rollback if browser text storage later fails.
+   const oldPosters=await readPosters();
    await writePosters(photos);
-   const changes=[[JOB,archive.data.desk],[MANUAL,archive.data.manual],[MANAGER,archive.data.manager],[PREVIEW_MANAGER,archive.data.previewManager]];
+   const changes=[[JOB,archive.data.desk],[MANUAL,archive.data.manual],[MANAGER,archive.data.manager],[PREVIEW_MANAGER,archive.data.previewManager],[SNS,archive.data.sns||'{"entries":[]}']];
    const before=changes.map(([key])=>[key,stored(key)]);
    try{for(const [key,value] of changes)localStorage.setItem(key,value);}
    catch(error){
     for(const [key,value] of before){try{if(value)localStorage.setItem(key,value);else localStorage.removeItem(key);}catch{}}
-    throw Error('브라우저 공간 부족으로 업무 기록을 교체하지 못했습니다. 기록은 유지됩니다.');
+    try{await writePosters(oldPosters);}catch{throw Error('복원 도중 저장 실패·사진 되돌리기 실패. 기존 백업 파일로 복원해 주세요.');}
+    throw Error('브라우저 공간 부족으로 업무 기록을 교체하지 못했습니다. 원래 사진과 기록을 되돌렸습니다.');
    }
    status.textContent='복원 완료 · 업무 '+desk.jobs.length+'건 · 포스터 '+photos.length+'건. 화면을 새로고침합니다.';
    window.location.reload();
