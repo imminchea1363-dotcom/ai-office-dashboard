@@ -252,6 +252,23 @@
     shell.remove();scan();
    }catch(e){status.textContent=e.message||'수정 실패';}finally{edit.disabled=false;}
   };
+  if(window.DongbaekOfficeManual?.appendApprovedDesign){
+   const remember=document.createElement('section');remember.className='db-poster-learn';
+   remember.style.cssText='margin:12px 0;padding:10px;border:1px solid #b4c9b7;border-radius:8px';
+   const heading=document.createElement('strong');heading.textContent='대표님 디자인 수정 기준 저장 (선택)';
+   const explain=document.createElement('p');explain.textContent='이번 수정에서 앞으로도 지킬 원칙만 적어 저장하세요. 이전 작업 전체를 자동 학습하지 않습니다.';
+   const field=document.createElement('textarea');field.placeholder='예: 포스터 제목은 짧고 크게, 실제 사진을 우선 사용하세요.';field.rows=2;field.maxLength=320;field.style.cssText='display:block;width:100%;box-sizing:border-box;padding:8px';
+   const submit=document.createElement('button');submit.type='button';submit.textContent='이 기준을 다음 디자인 업무에도 적용';submit.style.marginTop='7px';
+   const result=document.createElement('p');result.setAttribute('role','status');
+   submit.onclick=()=>{
+    const note=field.value.trim();
+    if(!note){result.textContent='저장할 기준을 먼저 적어 주세요.';return;}
+    if(!window.confirm('입력한 디자인 기준을 임민채 대리 업무 매뉴얼에 저장하고 이후 새 업무에 적용할까요?'))return;
+    try{window.DongbaekOfficeManual.appendApprovedDesign(note);result.textContent='매뉴얼 저장 완료. 이후 새 디자인 업무에 적용됩니다.';field.value='';}
+    catch(e){result.textContent=e.message||'기준을 저장할 수 없습니다.';}
+   };
+   remember.append(heading,explain,field,submit,result);details.append(remember);
+  }
   shell.append(details);card.append(shell);
  }
  async function scan(){
