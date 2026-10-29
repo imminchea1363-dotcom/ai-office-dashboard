@@ -155,7 +155,7 @@
   c.fillStyle=shade;c.fillRect(0,0,w,h);
   c.strokeStyle='rgba(255,255,255,.75)';c.lineWidth=3;c.strokeRect(44,44,w-88,h-88);
   printLines(c,'DONGBAEG · PENSION',82,94,34,910,1,'#fff7e8');
-  const titleTop=Math.round(h*.64),subtitleBottom=h-212;
+  const titleTop=Math.round(h*(cfg.format==='feed'?.53:.64)),subtitleBottom=h-212;
   c.fillStyle=style.accent;c.fillRect(82,titleTop-42,95,9);
   let titleSize=cfg.format==='feed'?75:91,lines=3;
   while(titleSize>48){
@@ -165,7 +165,7 @@
    titleSize-=3;
   }
   const end=printLines(c,data.headline,82,titleTop,titleSize,905,lines,style.text);
-  const subtitleY=Math.min(subtitleBottom-68,end+21);
+  const subtitleY=Math.max(titleTop+75,Math.min(subtitleBottom-68,end+21));
   printLines(c,data.subtitle,86,subtitleY,cfg.format==='feed'?32:39,898,2,'#ffffff');
   const footerY=h-155;c.fillStyle='#fff7e7';c.fillRect(78,footerY,924,100);
   let ctaSize=38;
