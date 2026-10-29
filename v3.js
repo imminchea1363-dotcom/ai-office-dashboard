@@ -20,7 +20,7 @@ function at(u,v,z,html){const [x,y]=P(u,v,z);return `<g transform="translate(${x
 const initial=()=>[
 {id:1,name:'동백총괄매니져',job:'총괄',role:'총괄 매니져 · 프로젝트 운영',gender:'male',hair:'short',color:'#769e8b',state:'work',loc:'office',seat:0,reports:0},
 {id:2,name:'임채리사원',job:'자료조사',role:'사원 · 자료조사',gender:'female',hair:'bob',color:'#9f95c0',state:'work',loc:'office',seat:1,reports:0},
-{id:3,name:'임민채대리',job:'디자인',role:'대리 · 디자인',gender:'female',hair:'long',color:'#d9a6a2',state:'wait',loc:'gym',seat:2,reports:0},
+{id:3,name:'임민채대리',job:'디자인·영상',role:'대리 · 디자인·영상',gender:'female',hair:'long',color:'#d9a6a2',state:'wait',loc:'gym',seat:2,reports:0},
 {id:4,name:'김검수사원',job:'검수',role:'사원 · 품질 검수',gender:'male',hair:'short',color:'#83a8bc',state:'wait',loc:'pantry',seat:3,reports:0}];
 const views={lobby:['1F 로비','출근 인사와 안내, 하루의 시작과 끝을 함께해요.'],office:['3F 오늘의 작업실','정렬된 개인 책상에서 컴퓨터를 보며 일합니다.'],director:['4F 대표실','엘리베이터에서 내려 대표에게 결과를 보고합니다.'],pantry:['3F 탕비실','엘리베이터 왼쪽 구석의 커피 바와 휴식 좌석입니다.'],gym:['2F 체력단련실','잠깐 움직이며 몸과 마음의 에너지를 채워요.'],roof:['G 정원','검정 프렌치불독 동백이와 쉬어 가는 정원입니다.'],elevator:['↕ 엘리베이터','직원의 층간 이동을 따라가는 중입니다.']};
 const stateNames={work:'작업 중',blocked:'막힘',wait:'휴식',done:'보고 완료',reporting:'보고 이동',question:'질문 대기',arriving:'출근 중',departing:'퇴근 중',off:'퇴근'};
