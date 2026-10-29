@@ -1,8 +1,8 @@
 /* v5: text-planned real PNG posters, using only local photographs and browser Canvas. */
 (() => {
  'use strict';
- const NAME='dongbaek-poster-studio-v1', SIZE=8*1024*1024;
- let selected=null;
+ const NAME='dongbaek-poster-studio-v1', SIZE=8*1024*1024, MAX_PHOTOS=5, MAX_TOTAL=30*1024*1024;
+ let selected=[];let selectedIndex=0;
  const clean=(s,n)=>String(s||'').replace(/[<>]/g,'').replace(/[\u0000-\u001f]/g,' ').trim().slice(0,n);
  function openDB(){return new Promise((ok,bad)=>{
   if(!indexedDB)return bad(Error('이 브라우저에서 이미지 저장이 불가능합니다.'));
@@ -22,6 +22,32 @@
  function verifyPhoto(file){
   if(!file)return;
   if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size<1||file.size>SIZE)throw Error('JPG·PNG·WebP 사진을 8MB 이하로 선택하세요.');
+ }
+ function verifyPhotos(files){
+  const arr=Array.from(files||[]);
+  if(arr.length>MAX_PHOTOS)throw Error('사진은 최대 '+MAX_PHOTOS+'장까지 선택할 수 있습니다.');
+  let total=0;
+  for(const file of arr){verifyPhoto(file);total+=file.size;}
+  if(total>MAX_TOTAL)throw Error('사진 전체 크기는 30MB 이하로 선택하세요.');
+  return arr;
+ }
+ function photoGallery(files,chosen,onPick){
+  const gallery=document.createElement('div');gallery.className='db-poster-gallery';
+  gallery.style.cssText='display:flex;gap:8px;flex-wrap:wrap;padding:8px 0';
+  const urls=[];
+  for(const [i,file] of files.entries()){
+   const b=document.createElement('button');b.type='button';b.dataset.photoPick=String(i);
+   b.setAttribute('aria-pressed',String(i===chosen));b.title='대표 사진 '+(i+1)+'번 선택';
+   b.style.cssText='border:3px solid '+(i===chosen?'#276c42':'#c7d4c7')+';padding:3px;border-radius:9px;background:#fff;display:grid;gap:4px;cursor:pointer;';
+   const url=URL.createObjectURL(file);urls.push(url);
+   const img=document.createElement('img');img.src=url;img.alt='업로드 사진 '+(i+1);img.style.cssText='width:92px;height:82px;object-fit:cover;border-radius:5px';
+   const cap=document.createElement('small');cap.textContent=(i===chosen?'✓ 대표 사진 ':'사진 ')+(i+1);
+   b.append(img,cap);gallery.append(b);
+   b.onclick=()=>onPick(i);
+  }
+  // URLs are kept through user interaction and released when gallery is detached.
+  gallery.cleanup=()=>urls.forEach(url=>URL.revokeObjectURL(url));
+  return gallery;
  }
  function getDesign(raw,task){
   let data={};
@@ -84,16 +110,22 @@
   text(c,data.cta,108,1768,35,850,1,1.2,'#224348');
   return await new Promise((ok,bad)=>canvas.toBlob(b=>b?ok(b):bad(Error('PNG 저장에 실패했습니다.')),'image/png'));
  }
- async function prepare(id,photo){
-  verifyPhoto(photo);const old=await item('read',id);
-  await item('write',id,{id,photo:photo||old?.photo||null,png:old?.png||null,design:old?.design||null,title:old?.title||'',updated:Date.now()});
+ async function prepare(id,photos,chosen=0){
+  const incoming=verifyPhotos(Array.isArray(photos)?photos:photos?[photos]:[]);
+  const old=await item('read',id);
+  const saved=incoming.length?incoming:(old?.photos|| (old?.photo?[old.photo]:[]));
+  const index=incoming.length?chosen:(old?.selectedIndex||0);
+  await item('write',id,{id,photo:saved[index]||saved[0]||null,photos:saved,selectedIndex:index,
+   png:old?.png||null,design:old?.design||null,title:old?.title||'',updated:Date.now()});
  }
  async function generate(id,task){
   const old=await item('read',id)||{id,photo:null};
-  const design=getDesign(task.designText,task),png=await draw(design,old.photo);
+  const photos=old.photos|| (old.photo?[old.photo]:[]);
+  const chosen=photos[old.selectedIndex||0]||old.photo||null;
+  const design=getDesign(task.designText,task),png=await draw(design,chosen);
   await item('write',id,{...old,png,design,title:task.title,updated:Date.now()});
   scan();
-  return {size:png.size,hasPhoto:Boolean(old.photo)};
+  return {size:png.size,hasPhoto:Boolean(chosen),photoCount:photos.length};
  }
  function download(row){
   const url=URL.createObjectURL(row.png),a=document.createElement('a');
@@ -106,6 +138,11 @@
   shell.style.cssText='margin:12px 0;padding:15px;background:#eef4e9;border:1px solid #becdb4;border-radius:10px';
   const h=document.createElement('h4');h.textContent='임민채 대리 · 실제 포스터 이미지';shell.append(h);
   const desc=document.createElement('p');desc.textContent=row.png?'PNG 1080×1920 · 이 브라우저에 저장됨 · 게시 전 검토 필요':'포스터 생성이 미완료 상태입니다. 아래에서 다시 만들어 보세요.';shell.append(desc);
+  const savedPhotos=row.photos||(row.photo?[row.photo]:[]);
+  if(savedPhotos.length){
+   const count=document.createElement('p');count.textContent='업로드된 실제 사진 '+savedPhotos.length+'장 · 대표 사진 '+((row.selectedIndex||0)+1)+'번';
+   shell.append(count);
+  }
   if(row.png){
    const img=document.createElement('img');img.alt='실제 사진 또는 그래픽 기반 홍보 포스터';img.style.cssText='width:min(100%,270px);height:auto;display:block;margin:12px 0;border-radius:7px';
    const url=URL.createObjectURL(row.png);img.src=url;img.onload=()=>URL.revokeObjectURL(url);img.onerror=()=>URL.revokeObjectURL(url);shell.append(img);
@@ -119,18 +156,33 @@
    const input=document.createElement('input');input.type='text';input.maxLength=max;input.value=row.design?.[key]||'';
    input.style.cssText='display:block;box-sizing:border-box;width:100%;padding:8px;margin:4px 0 9px;border:1px solid #b9c4ad;border-radius:4px';wrap.append(input);details.append(wrap);fields[key]=input;
   }
-  const photoLabel=document.createElement('label');photoLabel.textContent='실제 사진 변경 (선택) ';
-  const photoInput=document.createElement('input');photoInput.type='file';photoInput.accept='image/png,image/jpeg,image/webp';photoLabel.append(photoInput);details.append(photoLabel);
+  const photoLabel=document.createElement('label');photoLabel.textContent='실제 사진 여러 장 변경 (선택 · 최대 5장) ';
+  const photoInput=document.createElement('input');photoInput.type='file';photoInput.multiple=true;photoInput.accept='image/png,image/jpeg,image/webp';photoLabel.append(photoInput);details.append(photoLabel);
+  let editPhotos=savedPhotos.slice(),editIndex=Math.min(row.selectedIndex||0,Math.max(0,editPhotos.length-1)),editGallery=null;
+  const editNote=document.createElement('p');editNote.textContent='사진을 다시 선택하지 않으면 기존 사진 전체가 유지됩니다.';details.append(editNote);
+  function refreshEdit(){
+   editGallery?.cleanup?.();editGallery?.remove();if(!editPhotos.length)return;
+   editGallery=photoGallery(editPhotos,editIndex,i=>{editIndex=i;refreshEdit();});details.insertBefore(editGallery,editNote);
+  }
+  photoInput.onchange=()=>{
+   try{
+    const next=verifyPhotos(photoInput.files);if(!next.length)return;
+    editPhotos=next;editIndex=0;refreshEdit();
+    editNote.textContent=next.length+'장 선택됨 · 대표 사진을 누르면 포스터에 사용할 사진을 바꿀 수 있습니다.';
+   }catch(e){photoInput.value='';editNote.textContent=e.message;}
+  };
+  refreshEdit();
   const edit=document.createElement('button');edit.type='button';edit.textContent='포스터 다시 만들기';details.append(edit);
   const status=document.createElement('p');status.setAttribute('role','status');details.append(status);
   edit.onclick=async()=>{
    edit.disabled=true;status.textContent='이미지를 생성하고 있습니다.';
    try{
-    const photo=photoInput.files?.[0]||row.photo||null;verifyPhoto(photo);
+    verifyPhotos(editPhotos);
+    const photo=editPhotos[editIndex]||null;
     const design=Object.fromEntries(Object.entries(fields).map(([k,v])=>[k,clean(v.value,k==='subtitle'?100:65)]));
     if(!design.headline||!design.cta)throw Error('큰 제목과 마지막 안내를 적어 주세요.');
     const png=await draw(design,photo);
-    await item('write',row.id,{...row,photo,design,png,updated:Date.now()});
+    await item('write',row.id,{...row,photo,photos:editPhotos,selectedIndex:editIndex,design,png,updated:Date.now()});
     shell.remove();scan();
    }catch(e){status.textContent=e.message||'수정 실패';}finally{edit.disabled=false;}
   };
@@ -143,17 +195,30 @@
   }
  }
  function install(form){
-  const label=document.createElement('label');label.textContent='실제 사진 (선택) · JPG/PNG/WebP · 8MB 이하';
-  const input=document.createElement('input');input.type='file';input.accept='image/jpeg,image/png,image/webp';input.id='db-manager-photo';label.append(input);
-  const note=document.createElement('small');note.textContent='사진은 외부 AI 서버로 보내지 않습니다. 사진이 없으면 객실을 묘사하지 않는 그래픽 포스터를 만듭니다.';note.style.display='block';label.append(note);
+  const label=document.createElement('div');label.textContent='실제 사진 (선택) · 최대 5장 · 각 8MB 이하 · 전체 30MB 이하';
+  const input=document.createElement('input');input.type='file';input.multiple=true;input.accept='image/jpeg,image/png,image/webp';input.id='db-manager-photo';label.append(input);
+  const note=document.createElement('small');note.textContent='여러 사진을 선택하고 대표 사진 1장을 지정하세요. 사진 전체는 이 브라우저에 저장되고, 현재 포스터는 대표 사진 1장으로 제작됩니다. 외부 AI 서버로 보내지 않습니다.';note.style.display='block';label.append(note);
+  let gallery=null;
+  function refreshGallery(){
+   gallery?.cleanup?.();gallery?.remove();
+   if(!selected.length)return;
+   gallery=photoGallery(selected,selectedIndex,i=>{selectedIndex=i;refreshGallery();});
+   label.append(gallery);
+  }
   label.id='db-manager-photo-panel';
   label.style.cssText='display:grid;gap:10px;border:2px solid #42785e;border-radius:10px;background:#eef6e9;padding:16px;margin:14px 0;font-size:15px;font-weight:700;color:#1d4c3d';
   input.style.cssText='display:block;width:100%;box-sizing:border-box;padding:10px;background:white;border:1px solid #94b5a0;border-radius:6px;font-size:14px;color:#1d4c3d';
   label.prepend(document.createTextNode('📷 포스터 사진 업로드 — 아래에서 파일 선택'));
   form.insertBefore(label,form.firstElementChild);
-  input.onchange=()=>{selected=input.files?.[0]||null;try{verifyPhoto(selected);if(selected)note.textContent='선택된 파일: '+selected.name+' · 이 사진은 외부 AI 서버로 전송하지 않습니다.';}catch(e){selected=null;input.value='';document.getElementById('db-manager-quick-progress').textContent=e.message;}};
+  input.onchange=()=>{
+   try{
+    const next=verifyPhotos(input.files);selected=next;selectedIndex=0;
+    note.textContent=next.length?next.length+'장 선택됨 · 포스터에 사용할 대표 사진을 누르세요. 전체 사진은 저장됩니다.':'사진 없이 그래픽 포스터를 제작합니다.';
+    refreshGallery();
+   }catch(e){selected=[];selectedIndex=0;input.value='';refreshGallery();note.textContent=e.message;}
+  };
   document.addEventListener('dongbaek-ai-jobs',scan);scan();
  }
- window.DongbaekPosterStudio=Object.freeze({install,prepare,generate,scan,selectedPhoto:()=>selected,
+ window.DongbaekPosterStudio=Object.freeze({install,prepare,generate,scan,selectedPhoto:()=>selected.slice(),selectedPhotoIndex:()=>selectedIndex,
   available:async()=>{try{const d=await openDB();d.close();return true;}catch{return false;}}});
 })();
