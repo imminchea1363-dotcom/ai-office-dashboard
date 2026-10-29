@@ -24,7 +24,7 @@ const path=require('node:path');
   await page.click('#db-ai-copy');
   await page.waitForFunction(()=>document.querySelector('#db-ai-status').textContent.includes('복사했습니다'));
   const copied=await page.evaluate(()=>navigator.clipboard.readText());
-  assert.match(copied,/임채리대리/);assert.match(copied,/주말 행사 안내/);assert.match(copied,/홍보 문구/);
+  assert.match(copied,/임채리사원/);assert.match(copied,/주말 행사 안내/);assert.match(copied,/홍보 문구/);
   assert.equal(await page.locator('#db-ai-jobs img').count(),0);
   assert.match(await page.locator('.db-ai-badge').textContent(),/지시문 복사됨/);
   assert.equal(await page.evaluate(()=>DongbaekOffice.busy()),false);
