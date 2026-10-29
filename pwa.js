@@ -59,7 +59,7 @@
   }
   async function verifyCache(){
     const root=new URL('./',location.href);
-    const paths=['index.html','characters.js','pixel-mode.js','v3.js','radio.js','gym-music.js', 'ai-desk.js', 'gpt-desk.js','pwa.js','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png','icons/maskable-512.png','assets/office-pixel.png','assets/office-background.png','assets/lobby-background.png','assets/gym-background.png','assets/characters-standing.png','assets/characters-working.png','assets/characters-gym.png','assets/characters-cleaner.png','assets/characters-coffee.png'];
+    const paths=['index.html','characters.js','pixel-mode.js','v3.js','radio.js','gym-music.js', 'docx-export.js', 'ai-desk.js', 'gpt-desk.js','pwa.js','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png','icons/maskable-512.png','assets/office-pixel.png','assets/office-background.png','assets/lobby-background.png','assets/gym-background.png','assets/characters-standing.png','assets/characters-working.png','assets/characters-gym.png','assets/characters-cleaner.png','assets/characters-coffee.png'];
     const prefix='dongbaek-pwa-'+encodeURIComponent(root.pathname)+'-';
     ready=false;
     for(const key of (await caches.keys()).filter(key=>key.startsWith(prefix))){
