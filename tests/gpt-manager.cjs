@@ -122,7 +122,7 @@ const assert = require('node:assert/strict');
   await page.fill('#db-manager-quick-brief','반려견과 바다 전망을 강조한 SNS 썸네일 디자인 기획안을 만들어 주세요.');
   assert.match(await page.locator('#db-manager-quick-run').textContent(),/5회/);
   await page.click('#db-manager-quick-run');
-  await page.waitForFunction(()=>document.querySelector('#db-gpt-status').textContent.includes('총괄 보고서 작성 완료'),null,{timeout:12000});
+  await page.waitForFunction(()=>document.querySelector('#db-manager-quick-progress').textContent.includes('5단계 완료'),null,{timeout:12000});
   assert.equal(writes.length,13,'Design task requires 5 calls: status='+await page.locator('#db-gpt-status').textContent()+'; quick='+await page.locator('#db-manager-quick-progress').textContent()+'; errors='+JSON.stringify(errors));
   assert.deepEqual(writes.slice(8).map(w=>w.title),[
     '동백총괄매니저 · 직원별 업무 배정',
