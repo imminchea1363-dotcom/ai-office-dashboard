@@ -146,8 +146,12 @@
   const label=document.createElement('label');label.textContent='실제 사진 (선택) · JPG/PNG/WebP · 8MB 이하';
   const input=document.createElement('input');input.type='file';input.accept='image/jpeg,image/png,image/webp';input.id='db-manager-photo';label.append(input);
   const note=document.createElement('small');note.textContent='사진은 외부 AI 서버로 보내지 않습니다. 사진이 없으면 객실을 묘사하지 않는 그래픽 포스터를 만듭니다.';note.style.display='block';label.append(note);
-  form.insertBefore(label,form.querySelector('button[type=submit]'));
-  input.onchange=()=>{selected=input.files?.[0]||null;try{verifyPhoto(selected);}catch(e){selected=null;input.value='';document.getElementById('db-manager-quick-progress').textContent=e.message;}};
+  label.id='db-manager-photo-panel';
+  label.style.cssText='display:grid;gap:10px;border:2px solid #42785e;border-radius:10px;background:#eef6e9;padding:16px;margin:14px 0;font-size:15px;font-weight:700;color:#1d4c3d';
+  input.style.cssText='display:block;width:100%;box-sizing:border-box;padding:10px;background:white;border:1px solid #94b5a0;border-radius:6px;font-size:14px;color:#1d4c3d';
+  label.prepend(document.createTextNode('📷 포스터 사진 업로드 — 아래에서 파일 선택'));
+  form.insertBefore(label,form.firstElementChild);
+  input.onchange=()=>{selected=input.files?.[0]||null;try{verifyPhoto(selected);if(selected)note.textContent='선택된 파일: '+selected.name+' · 이 사진은 외부 AI 서버로 전송하지 않습니다.';}catch(e){selected=null;input.value='';document.getElementById('db-manager-quick-progress').textContent=e.message;}};
   document.addEventListener('dongbaek-ai-jobs',scan);scan();
  }
  window.DongbaekPosterStudio=Object.freeze({install,prepare,generate,scan,selectedPhoto:()=>selected,
