@@ -16,7 +16,7 @@ const a=require('node:assert/strict');
  a.equal(await page.locator('#db-world').getAttribute('viewBox'),'0 0 1350 975');
  a.equal(await actor(1).locator('[data-painted-sprite=working]').count(),1);a.equal(await actor(1).getAttribute('data-pose'),'work');a.equal(await actor(2).getAttribute('data-gender'),'female');
  a.equal(await actor(3).count(),0);a.equal(await actor(4).count(),0);
- a.match(await roster(3).textContent(),/디자인 · 임민채대리/);a.match(await roster(2).textContent(),/자료조사 · 임채리사원/);
+ a.match(await roster(3).textContent(),/디자인·영상 · 임민채대리/);a.match(await roster(2).textContent(),/자료조사 · 임채리사원/);
  await go('gym');a.equal(await page.locator('[data-room-art=gym]').count(),1);a.equal(await actor(3).getAttribute('data-gender'),'female');a.equal(await actor(3).getAttribute('data-pose'),'gym');a.equal(await actor(3).getAttribute('data-outfit'),'sportswear');a.equal(await actor(1).count(),0);
  await go('pantry');a.equal(await actor(4).getAttribute('data-pose'),'coffee');a.equal(await actor(1).count(),0);
  await go('roof');a.equal(await page.locator('.db-dog-route').count(),1);for(const t of ['동백이 집','밥그릇','물그릇'])a.match(await page.locator('#db-furniture').textContent(),new RegExp(t));

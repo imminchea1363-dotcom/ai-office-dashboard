@@ -155,11 +155,11 @@ const assert = require('node:assert/strict');
   assert.deepEqual(writes.slice(8).map(w=>w.title),[
     '동백총괄매니저 · 직원별 업무 배정',
     '임채리사원 · 자료조사 업무',
-    '임민채대리 · 디자인 기획',
+    '임민채대리 · 디자인·영상 기획',
     '김검수사원 · 자료 검수',
     '동백총괄매니저 · 최종 종합 보고'
   ]);
-  assert.match(await page.locator('.db-ai-task').first().textContent(),/임민채대리 디자인 기획/);
+  assert.match(await page.locator('.db-ai-task').first().textContent(),/임민채대리 디자인·영상 기획/);
   const finalReport=await page.locator('.db-ai-task').first().textContent();
   assert.match(finalReport,/## 총괄매니저 최종 보고[\s\S]*최종 매니저 보고/,'Design report must include the final manager synthesis, not the QA step in its place');
   assert.equal(await page.locator('#db-manager-quick-stages li').count(),5);
