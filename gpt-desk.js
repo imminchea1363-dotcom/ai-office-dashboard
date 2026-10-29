@@ -23,6 +23,9 @@
  panel.after(quick);
  css.textContent += '.db-manager-quick{padding:20px;border:2px solid #b6c8b0;border-radius:12px;background:#f8fbf4;margin:16px 0 22px;scroll-margin-top:12px}.db-manager-quick h3{margin:0 0 10px;font-size:19px}.db-manager-quick p{line-height:1.65}.db-manager-quick form{display:grid;gap:12px;max-width:730px}.db-manager-quick label{display:grid;gap:6px;font-size:13px;font-weight:600}.db-manager-quick input,.db-manager-quick textarea,.db-manager-quick select{width:100%;font:inherit;font-size:14px;border:1px solid #b6c8b0;background:white;padding:10px;border-radius:7px;box-sizing:border-box}.db-manager-quick textarea{resize:vertical}.db-manager-quick button{max-width:100%;white-space:normal}.db-manager-quick-stages li{margin:5px 0}.db-manager-quick li[data-state="active"]{font-weight:700;color:#205f3c}.db-manager-quick li[data-state="done"]{color:#3c7950}.db-manager-quick ol{padding-left:25px}.db-manager-quick #db-manager-quick-progress{font-weight:600}';
  const quickForm=$('db-manager-quick-form'), quickButton=$('db-manager-quick-run');
+ const officeManual=window.DongbaekOfficeManual;
+ if(officeManual)officeManual.install(document.getElementById('db-manager-quick'));
+
  const posterStudio=window.DongbaekPosterStudio;
  if(posterStudio)posterStudio.install(quickForm);
  const quickProgress=$('db-manager-quick-progress'), quickStages=[...$('db-manager-quick-stages').children];
@@ -111,7 +114,7 @@
   const research = (record.parts[1].result || '').slice(0, 1400);
   const review = (record.parts[design?3:2].result || '').slice(0, 1000);
   const visual = design ? (record.parts[2].result || '').slice(0, 1200) : '';
-  const common = '원래 대표 지시: ' + brief + '\n검증되지 않은 상품 가격·시장 정보는 사실로 쓰지 마세요. 인터넷 검색 기능이 연결되지 않았으므로 실시간 조회를 했다고 주장하지 마세요.';
+  const common = '원래 대표 지시: ' + brief + '\n[대표 승인 업무 매뉴얼]\n' + (officeManual?officeManual.forStage(stage,design):'정보를 지어내지 말고 미확인 사항을 구분하세요.') + '\n검증되지 않은 상품 가격·시장 정보는 사실로 쓰지 마세요. 인터넷 검색 기능이 연결되지 않았으므로 실시간 조회를 했다고 주장하지 마세요.';
   if (stage === 0) return {
    title: '동백총괄매니저 · 직원별 업무 배정',
    brief: common + (design?'\n임채리사원(자료조사), 임민채대리(디자인 기획), 김검수사원(검수)에게 업무를 배정하세요. 디자인 단계는 이미지 제작이 아닌 시각 콘셉트·구성·제작 지침 작성입니다.':'\n임채리사원(자료조사)와 김검수사원(검수)에게 업무를 배정하세요.') + '\n마지막에 대표에게 보고할 평가 기준을 제시하세요.',
