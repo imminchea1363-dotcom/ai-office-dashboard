@@ -173,22 +173,22 @@
   printLines(c,data.cta,108,footerY+(100-ctaSize)/2-2,ctaSize,850,1,'#224348');
   return await new Promise((ok,bad)=>canvas.toBlob(blob=>blob?ok(blob):bad(Error('PNG 저장에 실패했습니다.')),'image/png'));
  }
- async function prepare(id,photos,chosen=0){
+ async function prepare(id,photos,chosen=0,settings){
   const incoming=verifyPhotos(Array.isArray(photos)?photos:photos?[photos]:[]);
   const old=await item('read',id);
   const saved=incoming.length?incoming:(old?.photos|| (old?.photo?[old.photo]:[]));
   const index=incoming.length?chosen:(old?.selectedIndex||0);
-  await item('write',id,{id,photo:saved[index]||saved[0]||null,photos:saved,selectedIndex:index,
+  await item('write',id,{id,photo:saved[index]||saved[0]||null,photos:saved,selectedIndex:index,options:choices(settings||old?.options),
    png:old?.png||null,design:old?.design||null,title:old?.title||'',updated:Date.now()});
  }
  async function generate(id,task){
   const old=await item('read',id)||{id,photo:null};
   const photos=old.photos|| (old.photo?[old.photo]:[]);
   const chosen=photos[old.selectedIndex||0]||old.photo||null;
-  const design=getDesign(task.designText,task),png=await draw(design,chosen);
+  const design=getDesign(task.designText,task),png=await draw(design,photos,{...old.options,selectedIndex:old.selectedIndex||0});
   await item('write',id,{...old,png,design,title:task.title,updated:Date.now()});
   scan();
-  return {size:png.size,hasPhoto:Boolean(chosen),photoCount:photos.length};
+  return {size:png.size,hasPhoto:Boolean(chosen),photoCount:photos.length,format:choices(old.options).format};
  }
  function download(row){
   const url=URL.createObjectURL(row.png),a=document.createElement('a');
@@ -200,7 +200,8 @@
   const shell=document.createElement('section');shell.className='db-poster-result';
   shell.style.cssText='margin:12px 0;padding:15px;background:#eef4e9;border:1px solid #becdb4;border-radius:10px';
   const h=document.createElement('h4');h.textContent='임민채 대리 · 실제 포스터 이미지';shell.append(h);
-  const desc=document.createElement('p');desc.textContent=row.png?'PNG 1080×1920 · 이 브라우저에 저장됨 · 게시 전 검토 필요':'포스터 생성이 미완료 상태입니다. 아래에서 다시 만들어 보세요.';shell.append(desc);
+  const shape=FORMATS[choices(row.options).format];
+  const desc=document.createElement('p');desc.textContent=row.png?'PNG '+shape.w+'×'+shape.h+' · '+shape.label+' · 브라우저 저장 · 게시 전 검토 필요':'포스터 생성이 미완료 상태입니다. 아래에서 다시 만들어 보세요.';shell.append(desc);
   const savedPhotos=row.photos||(row.photo?[row.photo]:[]);
   if(savedPhotos.length){
    const count=document.createElement('p');count.textContent='업로드된 실제 사진 '+savedPhotos.length+'장 · 대표 사진 '+((row.selectedIndex||0)+1)+'번';
@@ -213,6 +214,7 @@
   }
   const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='문구·사진 수정하기 (GPT 요금 없음)';
   details.append(summary);
+  const editSettings=settingsUI(row.options,'db-edit-'+row.id.slice(0,8));details.append(editSettings.root);
   const fields={};
   for(const [key,label,max] of [['headline','큰 제목',46],['subtitle','보조 문구',100],['cta','마지막 안내',65]]){
    const wrap=document.createElement('label');wrap.textContent=label;
@@ -244,8 +246,9 @@
     const photo=editPhotos[editIndex]||null;
     const design=Object.fromEntries(Object.entries(fields).map(([k,v])=>[k,clean(v.value,k==='subtitle'?100:65)]));
     if(!design.headline||!design.cta)throw Error('큰 제목과 마지막 안내를 적어 주세요.');
-    const png=await draw(design,photo);
-    await item('write',row.id,{...row,photo,photos:editPhotos,selectedIndex:editIndex,design,png,updated:Date.now()});
+    const options={...editSettings.get(),selectedIndex:editIndex};
+    const png=await draw(design,editPhotos,options);
+    await item('write',row.id,{...row,photo,photos:editPhotos,selectedIndex:editIndex,options,design,png,updated:Date.now()});
     shell.remove();scan();
    }catch(e){status.textContent=e.message||'수정 실패';}finally{edit.disabled=false;}
   };
@@ -259,6 +262,7 @@
  }
  function install(form){
   const label=document.createElement('div');label.textContent='실제 사진 (선택) · 최대 5장 · 각 8MB 이하 · 전체 30MB 이하';
+  const creationSettings=settingsUI({},'db-new-poster');label.append(creationSettings.root);
   const input=document.createElement('input');input.type='file';input.multiple=true;input.accept='image/jpeg,image/png,image/webp';input.id='db-manager-photo';label.append(input);
   const note=document.createElement('small');note.textContent='여러 사진을 선택하고 대표 사진 1장을 지정하세요. 사진 전체는 이 브라우저에 저장되고, 현재 포스터는 대표 사진 1장으로 제작됩니다. 외부 AI 서버로 보내지 않습니다.';note.style.display='block';label.append(note);
   let gallery=null;
@@ -282,6 +286,6 @@
   };
   document.addEventListener('dongbaek-ai-jobs',scan);scan();
  }
- window.DongbaekPosterStudio=Object.freeze({install,prepare,generate,scan,selectedPhoto:()=>selected.slice(),selectedPhotoIndex:()=>selectedIndex,
+ window.DongbaekPosterStudio=Object.freeze({install,prepare,generate,scan,selectedPhoto:()=>selected.slice(),selectedPhotoIndex:()=>selectedIndex,selectedOptions:()=>creationSettings.get(),
   available:async()=>{try{const d=await openDB();d.close();return true;}catch{return false;}}});
 })();
