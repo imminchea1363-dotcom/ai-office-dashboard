@@ -18,6 +18,15 @@
  managerButton.className = 'db-ai-primary';
  managerButton.textContent = '총괄매니저 자동 배정·종합 보고 (GPT 4회 호출)';
  run.after(managerButton);
+ const quick = document.createElement('section'); quick.id='db-manager-quick'; quick.className='db-manager-quick';
+ quick.innerHTML = '<h3>총괄매니저에게 바로 지시하기</h3><p>대표님은 제목과 지시만 입력하세요. 직원별 조사 → 검수 → 최종 보고는 자동으로 진행됩니다. 지시문 복사나 직원 선택은 필요 없습니다.</p><form id="db-manager-quick-form"><label>업무 제목<input id="db-manager-quick-title" maxlength="100" required placeholder="예: 동백팬션 11월 홍보 전략"></label><label>총괄매니저에게 할 지시<textarea id="db-manager-quick-brief" rows="5" maxlength="3000" required placeholder="원하는 목표, 배경, 기준과 제한사항을 말씀해 주세요."></textarea></label><label>원하는 결과<select id="db-manager-quick-output"><option>보고서</option><option>홍보 문구</option><option>SNS 게시 계획</option><option>문서 · 표 · 발표자료</option></select></label><button type="submit" id="db-manager-quick-run" class="db-ai-primary">총괄에게 업무 맡기기 · GPT 최대 4회 유료 호출</button></form><p id="db-manager-quick-progress" role="status" aria-live="polite">GPT 연결 후 업무를 지시할 수 있습니다. 실시간 인터넷 조사 및 외부 자동 게시는 지원하지 않습니다.</p><ol id="db-manager-quick-stages"><li>1. 총괄 업무 배정</li><li>2. 임채리대리 조사</li><li>3. 김검수사원 검수</li><li>4. 총괄 종합 보고</li></ol><button id="db-manager-quick-results" type="button">완료된 결과 확인 ↓</button>';
+ panel.after(quick);
+ css.textContent += '.db-manager-quick{padding:20px;border:2px solid #b6c8b0;border-radius:12px;background:#f8fbf4;margin:16px 0 22px;scroll-margin-top:12px}.db-manager-quick h3{margin:0 0 10px;font-size:19px}.db-manager-quick p{line-height:1.65}.db-manager-quick form{display:grid;gap:12px;max-width:730px}.db-manager-quick label{display:grid;gap:6px;font-size:13px;font-weight:600}.db-manager-quick input,.db-manager-quick textarea,.db-manager-quick select{width:100%;font:inherit;font-size:14px;border:1px solid #b6c8b0;background:white;padding:10px;border-radius:7px;box-sizing:border-box}.db-manager-quick textarea{resize:vertical}.db-manager-quick button{max-width:100%;white-space:normal}.db-manager-quick-stages li{margin:5px 0}.db-manager-quick li[data-state="active"]{font-weight:700;color:#205f3c}.db-manager-quick li[data-state="done"]{color:#3c7950}.db-manager-quick ol{padding-left:25px}.db-manager-quick #db-manager-quick-progress{font-weight:600}';
+ const quickForm=$('db-manager-quick-form'), quickButton=$('db-manager-quick-run');
+ const quickProgress=$('db-manager-quick-progress'), quickStages=[...$('db-manager-quick-stages').children];
+ let quickParentId = null;
+ const quickStatus=(step,note)=>{quickProgress.textContent=note;quickStages.forEach((li,index)=>{li.dataset.state=index<step?'done':index===step?'active':'waiting';});};
+ $('db-manager-quick-results').onclick=()=>{document.getElementById('db-ai-jobs').scrollIntoView({behavior:'smooth',block:'start'});};
  const managerKey = 'dongbaek-manager-runs-v1';
  let managerRuns = {};
  try {
@@ -34,6 +43,7 @@
   run.hidden = !eligible; run.disabled = !connected || busy || desk.pendingGPT().length > 0;
   managerButton.hidden = !eligible;
   managerButton.disabled = !connected || busy || desk.pendingGPT().length > 0;
+  quickButton.disabled = !connected || busy || desk.pendingGPT().length > 0;
   $('db-gpt-connect').disabled = busy; $('db-gpt-disconnect').disabled = busy;
   $('db-gpt-access').disabled = busy;
  }
@@ -125,6 +135,7 @@
    for (; record.stage < record.parts.length; ) {
     const index = record.stage, part = record.parts[index], task = stageTask(record, index);
     message('총괄 자동 배정: ' + (index + 1) + '/4단계 진행 중 · ' + task.title);
+    if(quickParentId===record.parentId) quickStatus(index, (index + 1) + '/4단계 진행 중: ' + task.title);
     let response;
     if (part.attempted) {
      // Never re-POST an uncertain paid operation. Only recover a previously saved result.
@@ -142,10 +153,12 @@
    desk.finishGPT(record.parentId, {result: composeManagerReport(record), usage: {calls: 4}, autoReport: true});
    delete managerRuns[record.parentId]; saveManager();
    message('직원별 GPT 처리와 총괄 보고서 작성 완료. 대표실 보고를 요청했습니다. 보고함에서 상태를 확인하세요.');
+   if(quickParentId===record.parentId) quickStatus(4,'GPT 4단계 완료 · 대표실 보고 상태는 아래 보고함에서 확인하세요.');
   } catch (error) {
    desk.failGPT(record.parentId, true);
    if (error.status === 401) disconnect();
    message('자동 배정 중단: ' + (error.message || '결과를 확인할 수 없습니다.') + ' · 자동 재실행하지 않습니다. 아래 업무에서 결과 확인 후 재개하세요.');
+   if(quickParentId===record.parentId) quickStatus(record.stage,'자동 배정이 중단됐습니다. 보고함의 저장된 단계 확인 버튼으로 재개할 수 있습니다.');
   } finally { busy = false; update(); renderRecovery(); }
  }
  managerButton.onclick = () => {
@@ -154,6 +167,7 @@
   if (!confirm('총괄매니저가 직원에게 업무를 나눠 맡기고 종합 보고서를 만듭니다. GPT API를 최대 4회 호출하며 사용료가 발생할 수 있습니다. 실행할까요?')) return;
   const job = desk.startGPT();
   if (!job) return;
+  if(quick.dataset.launching==='yes') quickParentId=job.id;
   const record = {
    parentId: job.id, title: job.title, brief: job.brief, output: job.output, stage: 0,
    parts: Array.from({length: 4}, () => ({ id: crypto.randomUUID(), attempted: false, result: '' }))
@@ -161,6 +175,20 @@
   managerRuns[job.id] = record;
   if (!saveManager()) { desk.failGPT(job.id, false); return; }
   runManager(record);
+ };
+ quickForm.onsubmit=event=>{
+  event.preventDefault();
+  if(!quickForm.reportValidity()||!connected||busy||desk.pendingGPT().length)return;
+  const worker=$('db-ai-worker'),service=$('db-ai-service');
+  if(![...worker.options].some(option=>option.value==='1')){quickStatus(0,'총괄매니저가 출근한 상태에서만 자동 업무를 맡길 수 있습니다.');return;}
+  worker.value='1';worker.dispatchEvent(new Event('change',{bubbles:true}));
+  service.value='chatgpt';service.dispatchEvent(new Event('change',{bubbles:true}));
+  $('db-ai-title').value=$('db-manager-quick-title').value.trim();
+  $('db-ai-brief').value=$('db-manager-quick-brief').value.trim();
+  $('db-ai-output').value=$('db-manager-quick-output').value;
+  for(const id of ['db-ai-title','db-ai-brief','db-ai-output'])$(id).dispatchEvent(new Event('input',{bubbles:true}));
+  update();quick.dataset.launching='yes';
+  try{managerButton.click();}finally{delete quick.dataset.launching;}
  };
  function renderManagerRecovery(job, card) {
   if (card.querySelector('.db-manager-recovery')) return;
@@ -199,7 +227,15 @@
    block.append(note, check, abandon); card.append(block);
   }
  }
- document.addEventListener('dongbaek-ai-jobs', () => { renderRecovery(); update(); });
+ document.addEventListener('dongbaek-ai-jobs', () => {
+  renderRecovery(); update();
+  if(quickParentId){
+   const card=[...document.querySelectorAll('[data-ai-job]')].find(el=>el.dataset.aiJob===quickParentId);
+   const status=card?.querySelector('.db-ai-badge')?.textContent||'';
+   if(status==='보고 완료')quickStatus(4,'대표실 보고 완료 · 아래 보고함에서 Word 문서를 받으실 수 있습니다.');
+   else if(status==='대표에게 이동 중')quickStatus(4,'GPT 업무 완료 · 대표실로 보고 이동 중');
+  }
+ });
  for (const id of ['db-ai-worker', 'db-ai-service']) $(id).addEventListener('change', update);
  document.addEventListener('click', () => queueMicrotask(update));
  window.addEventListener('pagehide', () => { connected = false; access = ''; $('db-gpt-access').value = ''; });
