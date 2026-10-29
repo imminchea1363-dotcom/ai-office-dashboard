@@ -48,6 +48,15 @@ const assert = require('node:assert/strict');
  }
  try {
   await page.goto(base);
+  assert.equal(await page.locator('#db-manual').count(),1,'Manual editor must mount');
+  await page.locator('#db-manual summary').click();
+  const designManual=page.locator('#db-manual textarea').nth(3);
+  await designManual.fill('실제 사진 우선, 큰 제목, 가격은 대표 승인 후 기재. 다음 업무에서도 이 기준을 사용한다.');
+  await page.getByRole('button',{name:'매뉴얼 저장'}).click();
+  assert.match(await page.locator('#db-manual [role=status]').textContent(),/저장 완료/);
+  await page.reload();
+  await page.locator('#db-manual summary').click();
+  assert.match(await page.locator('#db-manual textarea').nth(3).inputValue(),/가격은 대표 승인/);
   assert.equal(await page.locator('#db-manager-photo').count(),1,'Poster photo selector must be mounted on load');
   assert.equal(await page.locator('#db-manager-photo').isVisible(),true,'Poster photo selector must be visible to user');
   assert.match(await page.locator('#db-manager-quick-form').textContent(),/실제 사진/);
@@ -126,6 +135,8 @@ const assert = require('node:assert/strict');
   assert.match(await page.locator('#db-manager-quick-run').textContent(),/5회/);
   await page.click('#db-manager-quick-run');
   await page.waitForFunction(()=>document.querySelector('#db-manager-quick-progress').textContent.includes('5단계 완료'),null,{timeout:12000});
+  assert.match(writes[10].brief,/가격은 대표 승인 후 기재/,'Designer prompt must include saved manual after reload');
+  assert.doesNotMatch(writes[9].brief,/가격은 대표 승인 후 기재/,'Research prompt must not receive design-only rule');
   assert.equal(writes.length,13,'Design task requires 5 calls: status='+await page.locator('#db-gpt-status').textContent()+'; quick='+await page.locator('#db-manager-quick-progress').textContent()+'; errors='+JSON.stringify(errors));
   assert.deepEqual(writes.slice(8).map(w=>w.title),[
     '동백총괄매니저 · 직원별 업무 배정',
