@@ -95,6 +95,18 @@
   finally { busy = false; update(); renderRecovery(); }
  };
  $('db-gpt-disconnect').onclick = () => { disconnect(); $('db-gpt-settings').open = true; message('GPT 연결을 해제했습니다. 저장된 업무 기록은 유지됩니다.'); renderRecovery(); };
+
+ const usageButton=document.createElement('button');usageButton.type='button';usageButton.id='db-gpt-usage';usageButton.textContent='GPT 사용량 확인 (생성 호출 없음)';
+ const usageLine=document.createElement('p');usageLine.id='db-gpt-usage-details';usageLine.setAttribute('role','status');usageLine.textContent='연결 후 사용량을 조회할 수 있습니다.';
+ $('db-gpt-status').after(usageButton,usageLine);
+ usageButton.onclick=async()=>{
+  if(!connected||busy){usageLine.textContent='먼저 GPT 서버에 연결해 주세요.';return;}
+  usageButton.disabled=true;
+  try{const data=await call('/api/status');const used=data.used||{},limits=data.limits||{};
+   usageLine.textContent='서버 기준 사용 횟수 · 오늘 '+(used.today??'?')+'/'+(limits.daily??'?')+'회 · 전체 '+(used.total??'?')+'/'+(limits.pilot??'?')+'회. 실제 결제 금액은 제공되지 않습니다.';
+  }catch(error){usageLine.textContent='사용량 조회 오류: '+(error.message||'연결 상태를 확인하세요.');}
+  finally{usageButton.disabled=false;}
+ };
  run.onclick = async () => {
   if (!connected || busy) return;
   const job = desk.startGPT(); if (!job) return;
