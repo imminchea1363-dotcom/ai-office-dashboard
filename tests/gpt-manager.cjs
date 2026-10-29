@@ -56,7 +56,8 @@ const assert = require('node:assert/strict');
   await page.fill('#db-ai-title','총괄 자동 조사 1');
   await page.fill('#db-ai-brief','가상의 쿠팡 판매상품 후보를 분석해 주세요. 실제 조회는 하지 않습니다.');
   await page.click('#db-manager-run');
-  await page.waitForFunction(() => document.querySelector('#db-gpt-status').textContent.includes('종합 보고서 작성 완료'));
+  try { await page.waitForFunction(() => document.querySelector('#db-gpt-status').textContent.includes('종합 보고서 작성 완료'),null,{timeout:10000}); }
+  catch(e) {throw new Error('Manager status: '+await page.locator('#db-gpt-status').textContent()+'; writes='+JSON.stringify(writes.map(x=>x.title))+'; errors='+JSON.stringify(errors)+'; original='+e.message);}
   assert.equal(writes.length,4);
   assert.deepEqual(writes.map(w=>w.title),[
    '동백총괄매니저 · 직원별 업무 배정',
