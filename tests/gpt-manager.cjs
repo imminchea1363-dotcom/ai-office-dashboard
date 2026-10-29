@@ -59,6 +59,7 @@ const assert = require('node:assert/strict');
   assert.match(await page.locator('#db-manual textarea').nth(3).inputValue(),/가격은 대표 승인/);
   assert.equal(await page.locator('#db-manager-photo').count(),1,'Poster photo selector must be mounted on load');
   assert.equal(await page.locator('#db-manager-photo').isVisible(),true,'Poster photo selector must be visible to user');
+  assert.equal(await page.locator('#db-manager-photo').getAttribute('multiple'),'','photo upload must support multi-select');
   assert.match(await page.locator('#db-manager-quick-form').textContent(),/실제 사진/);
   assert.equal(await page.locator('#db-manager-run').isDisabled(),true);
   await page.selectOption('#db-ai-worker','2');
@@ -130,6 +131,14 @@ const assert = require('node:assert/strict');
   assert.equal(reads.length,1);
   assert.equal(writes.length,8,'An uncertain GPT stage must be recovered without repeating its paid POST');
   assert.match(await page.locator('.db-ai-task').first().textContent(),/최종 매니저 보고/);
+  const tinyPng=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+nuW0AAAAASUVORK5CYII=','base64');
+  await page.locator('#db-manager-photo').setInputFiles([
+   {name:'ocean.png',mimeType:'image/png',buffer:tinyPng},
+   {name:'firepit.png',mimeType:'image/png',buffer:tinyPng}
+  ]);
+  assert.equal(await page.locator('#db-manager-photo-panel [data-photo-pick]').count(),2,'all uploaded photos should have visible selectors');
+  await page.locator('#db-manager-photo-panel [data-photo-pick="1"]').click();
+  assert.equal(await page.locator('#db-manager-photo-panel [data-photo-pick="1"]').getAttribute('aria-pressed'),'true','second image selected');
   await page.fill('#db-manager-quick-title','동백팬션 디자인 썸네일');
   await page.fill('#db-manager-quick-brief','반려견과 바다 전망을 강조한 SNS 썸네일 디자인 기획안을 만들어 주세요.');
   assert.match(await page.locator('#db-manager-quick-run').textContent(),/5회/);
@@ -150,6 +159,13 @@ const assert = require('node:assert/strict');
   assert.match(finalReport,/## 총괄매니저 최종 보고[\s\S]*최종 매니저 보고/,'Design report must include the final manager synthesis, not the QA step in its place');
   assert.equal(await page.locator('#db-manager-quick-stages li').count(),5);
   await page.waitForSelector('[data-poster-download]');
+  assert.match(await page.locator('.db-poster-result').first().textContent(),/실제 사진 2장 · 대표 사진 2번/);
+  const savedPhotos=await page.evaluate(async()=>{
+   const d=await new Promise((resolve,reject)=>{const req=indexedDB.open('dongbaek-poster-studio-v1');req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});
+   const row=await new Promise((resolve,reject)=>{const tx=d.transaction('files');const req=tx.objectStore('files').getAll();req.onsuccess=()=>resolve(req.result.find(x=>x.photos?.length===2));req.onerror=()=>reject(req.error);});
+   d.close();return row?{n:row.photos.length,selected:row.selectedIndex,photoSize:row.photo.size}:null;
+  });
+  assert.deepEqual(savedPhotos,{n:2,selected:1,photoSize:tinyPng.length});
   const pngDownload=page.waitForEvent('download');
   await page.locator('[data-poster-download]').first().click();
   const poster=await pngDownload;
