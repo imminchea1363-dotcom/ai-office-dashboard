@@ -73,7 +73,7 @@ const assert = require('node:assert/strict');
   assert.equal(writes.length,4);
   assert.deepEqual(writes.map(w=>w.title),[
    '동백총괄매니저 · 직원별 업무 배정',
-   '임채리대리 · 자료조사 업무',
+   '임채리사원 · 자료조사 업무',
    '김검수사원 · 자료 검수',
    '동백총괄매니저 · 최종 종합 보고'
   ]);
@@ -92,7 +92,7 @@ const assert = require('node:assert/strict');
   execFileSync('python3',['-c',"import zipfile,sys,xml.etree.ElementTree as ET; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; assert '[Content_Types].xml' in z.namelist(); assert 'word/document.xml' in z.namelist(); ET.fromstring(z.read('word/document.xml')); ET.fromstring(z.read('word/styles.xml'))",await downloaded.path()]);
   const binary=bytes.toString('utf8');
   assert.match(binary,/word\/document\.xml/);
-  assert.match(binary,/임채리대리 자료조사/);
+  assert.match(binary,/임채리사원 자료조사/);
   assert.match(binary,/최종 매니저 보고/);
   assert.doesNotMatch(binary,/총괄매니저 업무 배정 기록/);
   const saved=await page.evaluate(()=>JSON.stringify({...localStorage}));
@@ -118,6 +118,21 @@ const assert = require('node:assert/strict');
   assert.equal(reads.length,1);
   assert.equal(writes.length,8,'An uncertain GPT stage must be recovered without repeating its paid POST');
   assert.match(await page.locator('.db-ai-task').first().textContent(),/최종 매니저 보고/);
+  await page.fill('#db-manager-quick-title','동백팬션 디자인 썸네일');
+  await page.fill('#db-manager-quick-brief','반려견과 바다 전망을 강조한 SNS 썸네일 디자인 기획안을 만들어 주세요.');
+  assert.match(await page.locator('#db-manager-quick-run').textContent(),/5회/);
+  await page.click('#db-manager-quick-run');
+  await page.waitForFunction(()=>document.querySelector('#db-gpt-status').textContent.includes('총괄 보고서 작성 완료'),null,{timeout:12000});
+  assert.equal(writes.length,13,'Design task requires five role-specific calls on top of two four-call runs');
+  assert.deepEqual(writes.slice(8).map(w=>w.title),[
+    '동백총괄매니저 · 직원별 업무 배정',
+    '임채리사원 · 자료조사 업무',
+    '임민채대리 · 디자인 기획',
+    '김검수사원 · 자료 검수',
+    '동백총괄매니저 · 최종 종합 보고'
+  ]);
+  assert.match(await page.locator('.db-ai-task').first().textContent(),/임민채대리 디자인 기획/);
+  assert.equal(await page.locator('#db-manager-quick-stages li').count(),5);
   assert.deepEqual(errors,[]);
   console.log('PASS manager browser: role routing, four mocked GPT jobs, report aggregation, HTML safety, local persistence, no credential storage, interrupted-response recovery without double charge');
  } finally {await context.close();await browser.close();}
