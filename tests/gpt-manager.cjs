@@ -1,5 +1,6 @@
 const {chromium} = require('playwright');
 const fs = require('node:fs');
+const {execFileSync} = require('node:child_process');
 const assert = require('node:assert/strict');
 
 (async () => {
@@ -78,6 +79,7 @@ const assert = require('node:assert/strict');
   assert.match(downloaded.suggestedFilename(),/\.docx$/);
   const bytes=fs.readFileSync(await downloaded.path());
   assert.equal(bytes[0],80);assert.equal(bytes[1],75);
+  execFileSync('python3',['-c',"import zipfile,sys,xml.etree.ElementTree as ET; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; assert '[Content_Types].xml' in z.namelist(); assert 'word/document.xml' in z.namelist(); ET.fromstring(z.read('word/document.xml')); ET.fromstring(z.read('word/styles.xml'))",await downloaded.path()]);
   const binary=bytes.toString('utf8');
   assert.match(binary,/word\/document\.xml/);
   assert.match(binary,/임채리대리 자료조사/);
