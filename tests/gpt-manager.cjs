@@ -189,7 +189,7 @@ const assert = require('node:assert/strict');
   await page.locator('.db-poster-result .db-poster-learn button').click();
   assert.match(await page.locator('#db-manual textarea').nth(3).inputValue(),/사진 속 시설만 안내/,'Approved correction should persist into the designer manual');
   await page.locator('.db-poster-result button', {hasText:'포스터 다시 만들기'}).click();
-  await page.waitForSelector('[data-poster-download]');
+  await page.waitForFunction(()=>document.querySelector('.db-poster-result')?.textContent.includes('1080×1920'),null,{timeout:20000});
   const updatedDownload=page.waitForEvent('download');
   await page.locator('[data-poster-download]').first().click();
   const editedPng=fs.readFileSync(await (await updatedDownload).path());
