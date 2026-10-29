@@ -139,9 +139,9 @@
     record.stage = index + 1;
     if (!saveManager()) throw new Error('진행 결과 저장 실패. 추가 GPT 호출을 중단했습니다.');
    }
-   desk.finishGPT(record.parentId, {result: composeManagerReport(record), usage: {calls: 4}});
+   desk.finishGPT(record.parentId, {result: composeManagerReport(record), usage: {calls: 4}, autoReport: true});
    delete managerRuns[record.parentId]; saveManager();
-   message('직원별 GPT 처리와 총괄 보고서 작성 완료. 아래 보고함에서 결과를 확인하세요.');
+   message('직원별 GPT 처리와 총괄 보고서 작성 완료. 대표실 보고를 요청했습니다. 보고함에서 상태를 확인하세요.');
   } catch (error) {
    desk.failGPT(record.parentId, true);
    if (error.status === 401) disconnect();
