@@ -2,7 +2,7 @@
 (() => {
  'use strict';
  const NAME='dongbaek-poster-studio-v1', SIZE=8*1024*1024, MAX_PHOTOS=5, MAX_TOTAL=30*1024*1024;
- let selected=[];let selectedIndex=0;
+ let selected=[];let selectedIndex=0;let creationSettings=null;
  const clean=(s,n)=>String(s||'').replace(/[<>]/g,'').replace(/[\u0000-\u001f]/g,' ').trim().slice(0,n);
  function openDB(){return new Promise((ok,bad)=>{
   if(!indexedDB)return bad(Error('이 브라우저에서 이미지 저장이 불가능합니다.'));
@@ -279,7 +279,7 @@
  }
  function install(form){
   const label=document.createElement('div');label.textContent='실제 사진 (선택) · 최대 5장 · 각 8MB 이하 · 전체 30MB 이하';
-  const creationSettings=settingsUI({},'db-new-poster');label.append(creationSettings.root);
+  creationSettings=settingsUI({},'db-new-poster');label.append(creationSettings.root);
   const input=document.createElement('input');input.type='file';input.multiple=true;input.accept='image/jpeg,image/png,image/webp';input.id='db-manager-photo';label.append(input);
   const note=document.createElement('small');note.textContent='여러 사진을 선택하고 대표 사진 1장을 지정하세요. 사진 전체는 이 브라우저에 저장되고, 현재 포스터는 대표 사진 1장으로 제작됩니다. 외부 AI 서버로 보내지 않습니다.';note.style.display='block';label.append(note);
   let gallery=null;
@@ -303,6 +303,6 @@
   };
   document.addEventListener('dongbaek-ai-jobs',scan);scan();
  }
- window.DongbaekPosterStudio=Object.freeze({install,prepare,generate,scan,selectedPhoto:()=>selected.slice(),selectedPhotoIndex:()=>selectedIndex,selectedOptions:()=>creationSettings.get(),
+ window.DongbaekPosterStudio=Object.freeze({install,prepare,generate,scan,selectedPhoto:()=>selected.slice(),selectedPhotoIndex:()=>selectedIndex,selectedOptions:()=>creationSettings?.get()||{format:'story',template:'coastal',layout:'single'},
   available:async()=>{try{const d=await openDB();d.close();return true;}catch{return false;}}});
 })();
