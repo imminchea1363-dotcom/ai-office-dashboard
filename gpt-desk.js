@@ -19,10 +19,12 @@
  managerButton.textContent = '총괄매니저 자동 배정·종합 보고 (GPT 4회 호출)';
  run.after(managerButton);
  const quick = document.createElement('section'); quick.id='db-manager-quick'; quick.className='db-manager-quick';
- quick.innerHTML = '<h3>총괄매니저에게 바로 지시하기</h3><p>대표님은 제목과 지시만 입력하세요. 직원별 조사 → 검수 → 최종 보고는 자동으로 진행됩니다. 지시문 복사나 직원 선택은 필요 없습니다.</p><form id="db-manager-quick-form"><label>업무 제목<input id="db-manager-quick-title" maxlength="100" required placeholder="예: 동백팬션 11월 홍보 전략"></label><label>총괄매니저에게 할 지시<textarea id="db-manager-quick-brief" rows="5" maxlength="3000" required placeholder="원하는 목표, 배경, 기준과 제한사항을 말씀해 주세요."></textarea></label><label>원하는 결과<select id="db-manager-quick-output"><option>보고서</option><option>홍보 문구</option><option>SNS 게시 계획</option><option>문서 · 표 · 발표자료</option></select></label><button type="submit" id="db-manager-quick-run" class="db-ai-primary">총괄에게 업무 맡기기 · GPT 최대 4회 유료 호출</button></form><p id="db-manager-quick-progress" role="status" aria-live="polite">GPT 연결 후 업무를 지시할 수 있습니다. 실시간 인터넷 조사 및 외부 자동 게시는 지원하지 않습니다.</p><ol id="db-manager-quick-stages"><li>1. 총괄 업무 배정</li><li>2. 임채리사원 조사</li><li>3. 김검수사원 검수</li><li>4. 총괄 종합 보고</li></ol><button id="db-manager-quick-results" type="button">완료된 결과 확인 ↓</button>';
+ quick.innerHTML = '<h3>총괄매니저에게 바로 지시하기</h3><p>대표님은 제목과 지시만 입력하세요. 직원별 조사 → 검수 → 최종 보고는 자동으로 진행됩니다. 지시문 복사나 직원 선택은 필요 없습니다.</p><form id="db-manager-quick-form"><label>업무 제목<input id="db-manager-quick-title" maxlength="100" required placeholder="예: 동백팬션 11월 홍보 전략"></label><label>총괄매니저에게 할 지시<textarea id="db-manager-quick-brief" rows="5" maxlength="3000" required placeholder="원하는 목표, 배경, 기준과 제한사항을 말씀해 주세요."></textarea></label><label>원하는 결과<select id="db-manager-quick-output"><option>보고서</option><option>홍보 문구</option><option>SNS 게시 계획</option><option>문서 · 표 · 발표자료</option></select></label><button type="submit" id="db-manager-quick-run" class="db-ai-primary">총괄에게 업무 맡기기 · GPT 최대 4회 유료 호출</button></form><p id="db-manager-quick-progress" role="status" aria-live="polite">GPT 연결 후 실행할 수 있습니다. 디자인 업무는 GPT 문구 기획과 브라우저 포스터 PNG 생성까지 진행합니다. 자동 게시하지 않습니다.</p><ol id="db-manager-quick-stages"><li>1. 총괄 업무 배정</li><li>2. 임채리사원 조사</li><li>3. 김검수사원 검수</li><li>4. 총괄 종합 보고</li></ol><button id="db-manager-quick-results" type="button">완료된 결과 확인 ↓</button>';
  panel.after(quick);
  css.textContent += '.db-manager-quick{padding:20px;border:2px solid #b6c8b0;border-radius:12px;background:#f8fbf4;margin:16px 0 22px;scroll-margin-top:12px}.db-manager-quick h3{margin:0 0 10px;font-size:19px}.db-manager-quick p{line-height:1.65}.db-manager-quick form{display:grid;gap:12px;max-width:730px}.db-manager-quick label{display:grid;gap:6px;font-size:13px;font-weight:600}.db-manager-quick input,.db-manager-quick textarea,.db-manager-quick select{width:100%;font:inherit;font-size:14px;border:1px solid #b6c8b0;background:white;padding:10px;border-radius:7px;box-sizing:border-box}.db-manager-quick textarea{resize:vertical}.db-manager-quick button{max-width:100%;white-space:normal}.db-manager-quick-stages li{margin:5px 0}.db-manager-quick li[data-state="active"]{font-weight:700;color:#205f3c}.db-manager-quick li[data-state="done"]{color:#3c7950}.db-manager-quick ol{padding-left:25px}.db-manager-quick #db-manager-quick-progress{font-weight:600}';
  const quickForm=$('db-manager-quick-form'), quickButton=$('db-manager-quick-run');
+ const posterStudio=window.DongbaekPosterStudio;
+ if(posterStudio)posterStudio.install(quickForm);
  const quickProgress=$('db-manager-quick-progress'), quickStages=[...$('db-manager-quick-stages').children];
  let quickParentId = null;
  const quickStatus=(step,note)=>{quickProgress.textContent=note;quickStages.forEach((li,index)=>{li.dataset.state=index<step?'done':index===step?'active':'waiting';});};
@@ -122,8 +124,9 @@
   };
   if (stage === 2 && design) return {
    title: '임민채대리 · 디자인 기획',
-   brief: common + '\n동백총괄매니저의 배정:\n' + plan + '\n임채리사원 조사:\n' + research + '\n디자인 담당으로서 시각 콘셉트, 색상·레이아웃, 구성 요소, 텍스트 배치, SNS 규격과 제작 지침을 구체적으로 제시하세요. 실제 이미지 파일·완성 디자인을 만들었다고 주장하지 마세요.',
-   output: '디자인 제작 지침'
+   brief: common + '\n동백총괄매니저의 배정:\n' + plan + '\n임채리사원 조사:\n' + research + '\n세로형 홍보 포스터의 문구를 생성하세요. 반드시 JSON 객체 하나만 반환: {"headline":"간결한 큰 제목","subtitle":"확인된 장점만 설명","cta":"실제로 확인된 예약 안내"}. 가격, 할인, 예약 가능일, 시설을 지어내지 마세요. 실제 사진이나 포스터 이미지는 생성했다고 주장하지 마세요.',
+   output: '디자인 제작 지침 JSON'
+
   };
   if (stage === 2 || (stage === 3 && design)) return {
    title: '김검수사원 · 자료 검수',
@@ -151,6 +154,7 @@
    '## 김검수사원 검수',
    record.parts[record.design===true?3:2].result,
    '',
+   ...(record.design===true?['','## 포스터 이미지','임민채 대리가 실제 PNG 포스터를 만들어 업무와 결과 보고함에 별도 저장했습니다. 아래 이미지에서 확인하고 내려받으세요.']:[]),
    '## 실행 전 확인',
    '위 권고사항을 실행하기 전 미확인 비용·시장 데이터와 자동화 연동 가능 여부를 따로 검증하세요.'
   ].join('\n').slice(0, 20000);
@@ -159,8 +163,23 @@
   if (!connected || busy) return;
   busy = true; update();
   try {
+   if(record.design && !record.photoPrepared){
+    if(!posterStudio)throw new Error('포스터 제작 도구가 설치되어 있지 않습니다.');
+    await posterStudio.prepare(record.parentId,quickParentId===record.parentId?posterStudio.selectedPhoto():null);
+    record.photoPrepared=true;
+    if(!saveManager())throw new Error('사진 준비 상태를 저장하지 못해 GPT 실행을 중단했습니다.');
+   }
    for (; record.stage < record.parts.length; ) {
     const index = record.stage, part = record.parts[index], task = stageTask(record, index);
+    // Generate a real PNG after the designer step, before charging for QA.
+    // If local image storage fails, preserve completed paid stages and allow safe recovery.
+    if(record.design && index===3 && !record.posterReady){
+     if(!posterStudio)throw new Error('브라우저 포스터 제작 도구를 찾지 못했습니다.');
+     message('임민채 대리 · 포스터 PNG를 생성하고 브라우저에 저장하고 있습니다.');
+     await posterStudio.generate(record.parentId,{title:record.title,brief:record.brief,designText:record.parts[2].result});
+     record.posterReady=true;
+     if(!saveManager())throw new Error('포스터 생성 기록을 저장하지 못했습니다. 유료 GPT 호출 없이 복구할 수 있습니다.');
+    }
     message('총괄 자동 배정: ' + (index + 1) + '/'+record.parts.length+'단계 진행 중 · ' + task.title);
     if(quickParentId===record.parentId) quickStatus(index, (index + 1) + '/'+record.parts.length+'단계 진행 중: ' + task.title);
     let response;
