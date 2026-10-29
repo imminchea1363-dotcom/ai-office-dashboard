@@ -122,7 +122,7 @@
   };
   if (stage === 2 && design) return {
    title: '임민채대리 · 디자인 기획',
-   brief: common + '\\n동백총괄매니저의 배정:\\n' + plan + '\\n임채리사원 조사:\\n' + research + '\\n디자인 담당으로서 시각 콘셉트, 색상·레이아웃, 구성 요소, 텍스트 배치, SNS 규격과 제작 지침을 구체적으로 제시하세요. 실제 이미지 파일·완성 디자인을 만들었다고 주장하지 마세요.',
+   brief: common + '\n동백총괄매니저의 배정:\n' + plan + '\n임채리사원 조사:\n' + research + '\n디자인 담당으로서 시각 콘셉트, 색상·레이아웃, 구성 요소, 텍스트 배치, SNS 규격과 제작 지침을 구체적으로 제시하세요. 실제 이미지 파일·완성 디자인을 만들었다고 주장하지 마세요.',
    output: '디자인 제작 지침'
   };
   if (stage === 2 || (stage === 3 && design)) return {
@@ -142,7 +142,7 @@
    '업무: ' + record.title,
    '',
    '## 총괄매니저 최종 보고',
-   record.parts[3].result,
+   record.parts[record.parts.length-1].result,
    '',
    '## 임채리사원 자료조사',
    record.parts[1].result,
@@ -256,6 +256,7 @@
   }
  }
  for(const id of ['db-manager-quick-title','db-manager-quick-brief','db-manager-quick-output'])$(id).addEventListener('input',()=>renderSteps({title:$('db-manager-quick-title').value,brief:$('db-manager-quick-brief').value,output:$('db-manager-quick-output').value}));
+ for(const id of ['db-ai-title','db-ai-brief','db-ai-output'])$(id).addEventListener('input',()=>{if(quickParentId && busy)return; const job={title:$('db-ai-title').value,brief:$('db-ai-brief').value,output:$('db-ai-output').value}; managerButton.textContent='총괄매니저 자동 배정·종합 보고 (GPT '+planSteps(job).length+'회 호출)';});
  document.addEventListener('dongbaek-ai-jobs', () => {
   renderRecovery(); update();
   if(quickParentId){
