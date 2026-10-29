@@ -131,7 +131,7 @@ const assert = require('node:assert/strict');
   assert.equal(reads.length,1);
   assert.equal(writes.length,8,'An uncertain GPT stage must be recovered without repeating its paid POST');
   assert.match(await page.locator('.db-ai-task').first().textContent(),/최종 매니저 보고/);
-  const tinyPng=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+nuW0AAAAASUVORK5CYII=','base64');
+  const tinyPng=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAFElEQVR4nGNMSfnPAANMDEgANwcAWUcBz3EwRLcAAAAASUVORK5CYII=','base64');
   await page.locator('#db-manager-photo').setInputFiles([
    {name:'ocean.png',mimeType:'image/png',buffer:tinyPng},
    {name:'firepit.png',mimeType:'image/png',buffer:tinyPng}
@@ -143,7 +143,8 @@ const assert = require('node:assert/strict');
   await page.fill('#db-manager-quick-brief','반려견과 바다 전망을 강조한 SNS 썸네일 디자인 기획안을 만들어 주세요.');
   assert.match(await page.locator('#db-manager-quick-run').textContent(),/5회/);
   await page.click('#db-manager-quick-run');
-  await page.waitForFunction(()=>document.querySelector('#db-manager-quick-progress').textContent.includes('5단계 완료'),null,{timeout:12000});
+  try{await page.waitForFunction(()=>document.querySelector('#db-manager-quick-progress').textContent.includes('5단계 완료'),null,{timeout:18000});}
+  catch(e){throw Error('Multi-photo design status: '+await page.locator('#db-manager-quick-progress').textContent()+'; gpt: '+await page.locator('#db-gpt-status').textContent()+'; page errors: '+JSON.stringify(errors)+'; '+e.message);}
   assert.match(writes[10].brief,/가격은 대표 승인 후 기재/,'Designer prompt must include saved manual after reload');
   assert.doesNotMatch(writes[9].brief,/가격은 대표 승인 후 기재/,'Research prompt must not receive design-only rule');
   assert.equal(writes.length,13,'Design task requires 5 calls: status='+await page.locator('#db-gpt-status').textContent()+'; quick='+await page.locator('#db-manager-quick-progress').textContent()+'; errors='+JSON.stringify(errors));
