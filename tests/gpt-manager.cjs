@@ -70,7 +70,7 @@ const assert = require('node:assert/strict');
   assert.match(writes[3].brief,/김검수 검수 결과/);
   assert.match(await page.locator('#db-ai-jobs').textContent(),/임채리 조사 결과/);
   assert.equal(await page.locator('#db-ai-jobs img').count(),0);
-  assert.equal(await page.locator('.db-ai-badge').first().textContent(),'결과 기록됨');
+  assert.match(await page.locator('.db-ai-badge').first().textContent(),/대표에게 이동 중|보고 완료/,'Manager task must automatically enter representative reporting flow');
   const saved=await page.evaluate(()=>JSON.stringify({...localStorage}));
   assert.ok(!saved.includes(secret));
   await page.reload();
