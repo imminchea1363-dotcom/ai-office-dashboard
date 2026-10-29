@@ -114,6 +114,17 @@
         job.beforeReports=previous;job.status='reporting';persist();renderJobs();notice(job.workerName+'이 대표실로 이동합니다. 보고가 접수되면 완료로 표시됩니다.');
       };actions.append(report);
       const exportButton=el('button','보고서 내려받기');exportButton.onclick=()=>download('동백사무실-'+job.title.replace(/[\\/:*?"<>|]/g,'-')+'.md','# '+job.title+'\n\n'+instruction(job)+'\n\n## 결과\n\n'+(job.result||'결과 미기록')+(job.url?'\n\n결과 링크: '+job.url:'')+'\n\n상태: '+states[job.status],'text/markdown;charset=utf-8');actions.append(exportButton);
+       if(window.DongbaekDocxExport?.create){
+         const word=el('button','Word 문서 내려받기');word.dataset.aiDocx=job.id;
+         word.onclick=()=>{
+           const filename='동백사무실-'+job.title.replace(/[\\/:*?"<>|]/g,'-')+'.docx';
+           const text='# '+job.title+'\n\n'+(job.result||'결과 미기록');
+           const blob=window.DongbaekDocxExport.create(text);
+           const url=URL.createObjectURL(blob),link=el('a');link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();
+           setTimeout(()=>URL.revokeObjectURL(url),30000);
+         };
+         actions.append(word);
+       }
       const remove=el('button','기록 삭제');remove.disabled=['reporting','generating','pending'].includes(job.status);remove.onclick=()=>{if(!confirm('이 업무 기록을 삭제할까요? 필요한 결과는 먼저 내려받으세요.'))return;jobs=jobs.filter(j=>j.id!==job.id);persist();renderJobs();notice('선택한 업무 기록을 삭제했습니다.');};actions.append(remove);card.append(actions);list.append(card);
     }
     document.dispatchEvent(new Event('dongbaek-ai-jobs'));
@@ -140,7 +151,18 @@
       draft.jobId=null;const job=prepareJob();if(!job)return null;
       job.gpt=true;job.status='generating';persist();renderJobs();return {...job};
     },
-    finishGPT:(id,data)=>{const job=jobs.find(j=>j.id===id);if(!job)return;job.result=clean(data.result,20000);job.usage=data.usage||null;job.status='ready';job.updated=new Date().toISOString();persist();renderJobs();notice('GPT 결과를 기록했습니다. 검토한 뒤 대표에게 보고할 수 있습니다.');},
+    finishGPT:(id,data)=>{
+       const job=jobs.find(j=>j.id===id);if(!job)return;
+       job.result=clean(data.result,20000);job.usage=data.usage||null;
+       job.status='ready';job.updated=new Date().toISOString();persist();renderJobs();
+       if(data.autoReport){
+         const button=[...document.querySelectorAll('[data-ai-report]')].find(b=>b.dataset.aiReport===id);
+         if(button&&!button.disabled){button.click();return;}
+         notice('종합 보고서 저장 완료. 자동 대표 보고를 시작하지 못했습니다. 결과는 보관됐으며 대표에게 보고 버튼으로 재시도할 수 있습니다.');
+         return;
+       }
+       notice('GPT 결과를 기록했습니다. 검토한 뒤 대표에게 보고할 수 있습니다.');
+     },
     failGPT:(id,pending)=>{const job=jobs.find(j=>j.id===id);if(!job)return;job.status=pending?'pending':'failed';job.updated=new Date().toISOString();persist();renderJobs();},
     pendingGPT:()=>jobs.filter(j=>j.gpt&&j.status==='pending').map(j=>({...j})),
     abandonGPT:id=>{const job=jobs.find(j=>j.id===id);if(!job||job.status!=='pending')return;job.status='failed';persist();renderJobs();},
