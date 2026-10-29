@@ -113,6 +113,12 @@
         if(!office.report?.(job.workerId)){notice('다른 직원이 이동 중입니다. 이동이 끝난 뒤 다시 보고해 주세요.');return;}
         job.beforeReports=previous;job.status='reporting';persist();renderJobs();notice(job.workerName+'이 대표실로 이동합니다. 보고가 접수되면 완료로 표시됩니다.');
       };actions.append(report);
+      const sns=el('button','SNS 초안 만들기');sns.type='button';sns.dataset.aiToSns=job.id;
+      sns.disabled=!job.result||['generating','pending'].includes(job.status);
+      sns.title=job.result?'이 업무의 제목·결과를 SNS 게시 초안 작성 화면으로 전달합니다. 자동 게시하지 않습니다.':'결과가 저장된 업무에서만 이용할 수 있습니다.';
+      sns.onclick=()=>{
+        document.dispatchEvent(new CustomEvent('dongbaek-office-to-sns',{detail:{jobId:job.id}}));
+      };actions.append(sns);
       const exportButton=el('button','보고서 내려받기');exportButton.onclick=()=>download('동백사무실-'+job.title.replace(/[\\/:*?"<>|]/g,'-')+'.md','# '+job.title+'\n\n'+instruction(job)+'\n\n## 결과\n\n'+(job.result||'결과 미기록')+(job.url?'\n\n결과 링크: '+job.url:'')+'\n\n상태: '+states[job.status],'text/markdown;charset=utf-8');actions.append(exportButton);
        if(window.DongbaekDocxExport?.create){
          const word=el('button','Word 문서 내려받기');word.dataset.aiDocx=job.id;
