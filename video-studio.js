@@ -37,6 +37,13 @@
  const attribution=n('p','사진·동영상은 이 브라우저 안에서만 편집됩니다. 원본은 외부 AI 서버에 보내지 않으며, 제작된 영상은 직접 다운로드해야 보존됩니다.');
  root.append(form,timeline,cutNote,cutEditor,preview,actions,status,canvas,playback,attribution);office.append(root);
  let selected=[],urls=[],run=null,finalUrl=null,completedBlob=null,savedVideoId='',renderedCuts=[];
+ let linkedJobId='',linkedVideoId='';
+ document.addEventListener('dongbaek-video-job-select',event=>{
+  const d=event.detail||{};if(typeof d.jobId!=='string'||d.jobId.length>100||run)return;
+  linkedJobId=d.jobId;linkedVideoId='';resetDownload();
+  title.value=String(d.title||'').slice(0,title.maxLength);
+  status.textContent='영상 업무가 연결됐습니다. 완성 영상을 저장하면 대표실 검수 대기에 등록합니다.';
+ });
  const clean=(v,max)=>String(v||'').replace(/[\u0000-\u001f]/g,' ').trim().slice(0,max);
  const ctx=canvas.getContext('2d');
  const formats={mp4:['video/mp4;codecs=avc1.42E01E','video/mp4'],webm:['video/webm;codecs=vp8','video/webm']};
@@ -186,6 +193,10 @@
   const row=await library.save(completedBlob,{title:title.value||'동백팬션 15초 영상',subtitle:subtitle.value,cta:cta.value,
    width:canvas.width,height:canvas.height,cuts:renderedCuts});
   savedVideoId=row.id;
+  if(linkedJobId&&linkedVideoId!==row.id){
+    linkedVideoId=row.id;
+    document.dispatchEvent(new CustomEvent('dongbaek-video-job-completed',{detail:{jobId:linkedJobId,videoId:row.id}}));
+  }
   return row;
  }
  saveLocal.onclick=async()=>{
