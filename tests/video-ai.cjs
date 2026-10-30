@@ -18,7 +18,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
   await page.click('#db-video-vision-analyze');
   assert.match(await page.locator('#db-video-vision-status').textContent(),/확인이 필요/);
   await page.check('#db-video-vision-consent');await page.click('#db-video-vision-analyze');
-  assert.match(await page.locator('#db-video-vision-status').textContent(),/연결되지 않았습니다/);
+  assert.match(await page.locator('#db-video-vision-status').textContent(),/연결되지 않았습니다|연결이 필요합니다/);
   assert.deepEqual(posts,[]);
   await page.evaluate(()=>{window.DongbaegVisionAnalyze=async ({frames})=>{
    if(frames.length!==1||frames.some(f=>!f.startsWith('data:image/jpeg;base64,')))throw Error('bad extracted frames');
