@@ -16,7 +16,7 @@ const path = require('node:path');
     await page.goto(base);
     await page.click('#db-install');
     await page.waitForFunction(()=>document.getElementById('db-offline-status')?.textContent==='✓ 오프라인 준비 완료');
-    assert.equal(await page.locator('#db-total').textContent(),'4');
+    assert.equal(await page.locator('#db-total').textContent(),'10');
     const cdp=await context.newCDPSession(page);
     const manifest=await cdp.send('Page.getAppManifest');
     assert.equal(manifest.errors.length,0);
