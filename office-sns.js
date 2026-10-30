@@ -57,6 +57,37 @@
   try{localStorage.setItem(key,JSON.stringify({version:1,entries}));return true;}catch{info.textContent='브라우저 저장 실패. 새로고침하면 변경 사항이 사라질 수 있습니다.';return false;}
  };
  const statuses=['초안','대표 승인','게시 완료'];
+ const REVIEW_FIELDS=[
+  ['facts','가격·혜택·시설·예약 가능 여부 등 사실을 확인함'],
+  ['media','사용 권한 있는 실제 사진·영상과 파일 규격을 확인함'],
+  ['caption','자막·맞춤법·CTA·개인정보를 확인함'],
+  ['account','게시할 계정과 공개 범위를 확인함'],
+  ['final','대표님이 완성 콘텐츠를 최종 확인함']
+ ];
+ function checkedCount(entry){return REVIEW_FIELDS.filter(([id])=>entry.review?.[id]===true).length;}
+ function copyReview(entry){return Object.fromEntries(REVIEW_FIELDS.map(([id])=>[id,entry.review?.[id]===true]));}
+ const accounts={
+  '인스타그램':'Meta 프로페셔널 계정과 승인된 게시 권한 · 미연결',
+  '스레드':'Meta Threads 계정 OAuth·게시 권한 · 미연결',
+  '틱톡':'개발자 앱 심사 및 사용자 승인 · 미연결',
+  '유튜브 쇼츠':'YouTube 업로드 OAuth와 실제 세로 영상 · 미연결',
+  '네이버 블로그':'기존 글쓰기 오픈 API 종료 · 원고 수동 게시'
+ };
+ function reviewPanel(entry){
+  const fieldset=el('fieldset');fieldset.style.cssText='border:1px solid #b5cbb9;border-radius:7px;margin:9px 0;padding:10px';
+  const legend=el('legend','게시 전 검수 · '+checkedCount(entry)+'/5');fieldset.append(legend);
+  for(const [id,title] of REVIEW_FIELDS){
+   const label=el('label');label.style.cssText='display:flex;align-items:flex-start;gap:9px;font-size:12px;margin:7px 0';
+   const check=el('input');check.type='checkbox';check.checked=entry.review?.[id]===true;check.dataset.snsCheck=id;
+   check.onchange=()=>{
+    if(entry.state!=='초안'){check.checked=!check.checked;info.textContent='승인 후에는 검수 결과를 바꾸지 않습니다. 먼저 초안으로 되돌리세요.';return;}
+    entry.review={...copyReview(entry),[id]:check.checked};entry.updated=Date.now();
+    if(put())draw();
+   };
+   label.append(check,el('span',title));fieldset.append(label);
+  }
+  return fieldset;
+ }
  const el=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
  const draw=()=>{
   list.replaceChildren();
@@ -66,11 +97,14 @@
    card.append(el('strong',entry.platform+' · '+entry.title),el('p','예정일: '+(entry.schedule||'미정')+' · 상태: '+entry.state));
    if(entry.sourceJobId)card.append(el('p','연결 업무: '+entry.sourceJobId.slice(0,18)+'…'));
    card.append(el('p','게시 전 확인: '+mediaCheck(entry)));
+   card.append(el('p','계정 연결 상태: '+accounts[entry.platform]));
+   card.append(reviewPanel(entry));
    if(entry.caption)card.append(el('p',entry.caption));
    const actions=el('div');
    if(entry.state==='초안'){
     const approve=el('button','대표 승인');approve.type='button';approve.dataset.snsApprove=entry.id;
     approve.onclick=()=>{
+     if(checkedCount(entry)!==REVIEW_FIELDS.length){info.textContent='게시 전 검수 5개를 모두 확인해야 대표 승인할 수 있습니다.';return;}
      if(['틱톡','유튜브 쇼츠'].includes(entry.platform))info.textContent='현재 승인은 게시 문안에만 해당합니다. 사진·영상 미디어 및 플랫폼별 업로드 준비는 별도로 확인해야 합니다.';
      if(!window.confirm('이 콘텐츠의 게시 문안을 확인하고 승인하시겠습니까? 플랫폼 업로드와 자동 게시는 실행되지 않습니다.'))return;
      entry.state='대표 승인';entry.updated=Date.now();if(put())draw();
@@ -107,7 +141,7 @@
   if(entries.length>=limit){info.textContent='게시 계획이 250건입니다. 기존 계획을 정리해 주세요.';return;}
   const source=sourceJobId;
   const linked=source?await inspectPoster(source):null;
-  const item={id:crypto.randomUUID?.()||String(Date.now())+'-'+Math.random().toString(36).slice(2),platform:select.value,title,caption:body,schedule:clean(publishDate.value,30),sourceJobId:source,hasPoster:Boolean(linked),state:'초안',updated:Date.now()};
+  const item={id:crypto.randomUUID?.()||String(Date.now())+'-'+Math.random().toString(36).slice(2),platform:select.value,title,caption:body,schedule:clean(publishDate.value,30),sourceJobId:source,hasPoster:Boolean(linked),review:{},state:'초안',updated:Date.now()};
   entries.unshift(item);if(put()){input.value='';caption.value='';sourceJobId='';origin.textContent='연결된 직원 업무 없음';info.textContent='게시 초안이 저장됐습니다. 대표 승인 전에는 게시하지 않습니다.';draw();}
  };
  document.addEventListener('dongbaek-office-to-sns',async event=>{
