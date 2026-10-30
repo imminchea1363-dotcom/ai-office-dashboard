@@ -38,40 +38,39 @@ const server = http.createServer((req, res) => {
       page.on('pageerror', error => errors.push(error.message));
       page.on('response', response => {if(response.status()>=400) errors.push(response.status()+' '+response.url());});
       await page.goto(url);
-      for (const scene of ['director','pantry','office']) {
+      for (const scene of ['director','pantry','office','roof']) {
         await page.locator('#db-areas [data-view='+scene+']').click();
         await page.waitForFunction(() => [...document.querySelectorAll('[data-painted-sprite] img')].every(img=>img.complete&&img.naturalWidth>0));
         await page.locator('#db-world').screenshot({path:path.join(previews, name+'-'+scene+'.png')});
         if (name === 'after') {
-          const jpeg = await page.locator('#db-world').screenshot({type:'jpeg',quality:65});
-          fs.writeFileSync(path.join(previews,'after-'+scene+'.jpg'),jpeg);
-          console.log('REVIEW_IMAGE:'+JSON.stringify({scene,base64:jpeg.toString('base64')}));
-        }
-      }
-      if (name === 'after') {
-        assert.equal(await page.locator('[data-character="black-french-bulldog"][data-pose="sit"]').count(),1);
-        assert.equal(await page.locator('.db-dog-route').count(),0);
-        assert.match(await page.locator('#db-occupancy').textContent(),/동백이 1마리/);
+        assert.equal(await page.locator('#db-total').textContent(),'10');
+        assert.equal(await page.locator('#db-areas [data-view=lobby]').count(),0);
+        await page.locator('#db-areas [data-view=office]').click();
+        assert.equal(await page.locator('#db-actors [data-worker]').count(),10);
+        assert.equal(await page.locator('#db-team-zones [data-team-zone]').count(),5);
+        assert.equal(await page.locator('#db-office-refit').count(),1);
+        assert.equal(await page.locator('.db-dog-route, .db-dog-seated').count(),0);
+        await page.locator('#db-world').screenshot({path:path.join(previews,'after-office-ten.png')});
         await page.locator('#db-areas [data-view=roof]').click();
         assert.equal(await page.locator('[data-character="black-french-bulldog"]').count(),1);
-        assert.equal(await page.locator('.db-dog-seated').count(),0);
-        // Fill the pantry through real employee actions, including two arrivals.
-        for (let i=0;i<2;i++) {await page.click('#db-spawn');await page.clock.runFor(16000);}
-        const employees = await page.evaluate(()=>DongbaekOffice.employees());
-        assert.equal(employees.length,6);
-        for (const employee of employees) {
+        assert.equal(await page.locator('[data-rooftop-furniture="dongbaek"]').count(),1);
+        assert.equal(await page.locator('[data-rooftop-furniture="staff-lounge"]').count(),1);
+        await page.locator('#db-world').screenshot({path:path.join(previews,'after-roof.png')});
+        const employees=await page.evaluate(()=>DongbaekOffice.employees());
+        assert.equal(employees.length,10);
+        for(const employee of employees){
           await page.locator('#db-roster [data-worker="'+employee.id+'"]').click();
           await page.locator('[data-worker-action=pantry]').click();
         }
         await page.locator('#db-areas [data-view=pantry]').click();
-        assert.equal(await page.locator('#db-actors [data-pose=coffee]').count(),6);
-        assert.equal(await page.locator('[data-seat-support=stool]').count(),4);
-        const placements = await page.locator('#db-actors [data-worker]').evaluateAll(nodes=>nodes.map(node=>node.parentElement.getAttribute('transform')));
-        assert.equal(new Set(placements).size,6);
-        await page.locator('#db-world').screenshot({path:path.join(previews,'after-pantry-six.png')});
+        assert.equal(await page.locator('#db-actors [data-pose=coffee]').count(),10);
+        assert.equal(await page.locator('[data-seat-support=stool]').count(),8);
+        const placements=await page.locator('#db-actors [data-worker]').evaluateAll(nodes=>nodes.map(node=>node.parentElement.getAttribute('transform')));
+        assert.equal(new Set(placements).size,10);
+        await page.locator('#db-world').screenshot({path:path.join(previews,'after-pantry-ten.png')});
         await page.click('#db-reset');
         await page.setViewportSize({width:390,height:844});
-        for (const scene of ['director','pantry','office']) {
+        for(const scene of ['director','pantry','office','roof']){
           await page.locator('#db-areas [data-view='+scene+']').click();
           assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
           await page.locator('#db-viewport').screenshot({path:path.join(previews,'mobile-'+scene+'.png')});
@@ -80,7 +79,7 @@ const server = http.createServer((req, res) => {
       assert.deepEqual(errors,[]);
       await context.close();
     }
-    console.log('PASS layouts: before/after screenshots, seated garden dog, one dog per view, six distinct pantry seats with supports, mobile width, no JS/resource errors');
+    console.log('PASS layouts: 10 employees, 4 separate teams, no lobby, dog rooftop only, 10 distinct pantry seats, mobile, no JS/resource errors');
   } finally {await browser.close();}
   for (const test of ['smoke.cjs','scene-details.cjs','radio.cjs','recovery.cjs','ai-desk.cjs','gpt-desk.cjs','gpt-manager.cjs','gpt-manager-preview.cjs','office-archive.cjs','office-sns.cjs','office-pipeline.cjs','video-studio.cjs','office-music.cjs','video-archive.cjs','video-review.cjs','video-ai.cjs']) {
     const result = await run(process.execPath,[path.join(root,'tests',test)],{cwd:root,env:{...process.env,APP_TEST_URL:base,PWA_TEST_URL:base+'dist/dongbaek-pwa/'},timeout:120000,maxBuffer:1024*1024});
