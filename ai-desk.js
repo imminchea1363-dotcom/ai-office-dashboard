@@ -160,7 +160,7 @@
         job.beforeReports=previous;job.status='reporting';persist();renderJobs();notice(job.workerName+'이 대표실로 이동합니다. 보고가 접수되면 완료로 표시됩니다.');
       };actions.append(report);
       const sns=el('button','SNS 초안 만들기');sns.type='button';sns.dataset.aiToSns=job.id;
-      sns.disabled=!job.result||['generating','pending'].includes(job.status);
+      sns.disabled=!job.result||['generating','pending'].includes(job.status)||(job.videoId&&job.videoReview!=='approved');
       sns.title=job.result?'이 업무의 제목·결과를 SNS 게시 초안 작성 화면으로 전달합니다. 자동 게시하지 않습니다.':'결과가 저장된 업무에서만 이용할 수 있습니다.';
       sns.onclick=()=>{
         document.dispatchEvent(new CustomEvent('dongbaek-office-to-sns',{detail:{jobId:job.id}}));
