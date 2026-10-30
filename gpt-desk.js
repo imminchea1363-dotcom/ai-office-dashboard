@@ -82,6 +82,13 @@
    return data;
   } finally { clearTimeout(timer); }
  }
+ window.DongbaegVisionAnalyze=async ({frames})=>{
+  if(!connected||!access)throw Error('GPT 서버 연결이 필요합니다. 영상은 전송하지 않았습니다.');
+  if(!Array.isArray(frames)||frames.length<1||frames.length>3)throw Error('프레임은 최대 3개까지 분석할 수 있습니다.');
+  const result=await call('/api/vision',{id:crypto.randomUUID(),frames});
+  if(!Array.isArray(result.visible)||!result.visible.length)throw Error('실제 장면 근거가 부족하여 자막을 적용하지 않았습니다.');
+  return result;
+ };
  $('db-gpt-connect-form').onsubmit = async event => {
   event.preventDefault(); if (busy) return;
   const value = $('db-gpt-access').value.trim();
