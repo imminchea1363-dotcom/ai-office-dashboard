@@ -158,6 +158,13 @@
   const item={id:crypto.randomUUID?.()||String(Date.now())+'-'+Math.random().toString(36).slice(2),platform:select.value,title,caption:body,schedule:clean(publishDate.value,30),sourceJobId:source,videoId,hasPoster:Boolean(linked),review:{},state:'초안',updated:Date.now()};
   entries.unshift(item);if(put()){input.value='';caption.value='';sourceJobId='';sourceVideoId='';origin.textContent='연결된 직원 업무 없음';info.textContent='게시 초안이 저장됐습니다. 대표 승인 전에는 게시하지 않습니다.';draw();}
  };
+ document.addEventListener('dongbaek-vision-draft',event=>{
+  const item=event.detail||{};
+  if(typeof item.post!=='string'||!item.post.trim())return;
+  caption.value=clean(item.post,3000);
+  if(typeof item.title==='string'&&item.title.trim())input.value=clean(item.title,100);
+  info.textContent='실제 장면 분석 기반 게시글과 해시태그 초안을 받아왔습니다. 검토하고 별도 저장해 주세요. 자동 게시는 실행하지 않습니다.';
+ });
  document.addEventListener('dongbaek-video-to-sns',async event=>{
   const id=event.detail?.videoId;
   if(typeof id!=='string'||id.length>110||!window.DongbaegVideoLibrary){info.textContent='영상 연결 요청이 올바르지 않습니다.';return;}
