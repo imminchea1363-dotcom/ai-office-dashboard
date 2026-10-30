@@ -6,7 +6,9 @@ const project=(u,v,z=0)=>currentView==='director'?[1050+(u-390)*1.6,450+(v-315)*
 const at=(u,v,z,html)=>{const [x,y]=project(u,v,z);return `<g transform="translate(${x} ${y})">${html}</g>`;};
 const rect=(x,y,w,h,fill,stroke='',sw=3)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" ${stroke?`stroke="${stroke}" stroke-width="${sw}"`:''}/>`;
 const label=(x,y,text,w=190)=>`<g transform="translate(${x} ${y})">${rect(-w/2,-13,w,28,'#fff2cb','#77633d',2)}<text y="6" text-anchor="middle" font-size="13" fill="#55472f">${E(text)}</text></g>`;
-const desks=[[362,58],[93,210],[350,210],[608,210],[93,403],[350,403],[608,403],[93,594],[350,594],[608,594]];
+// Staff seats share a coordinate system with the desks and four partitioned team zones.
+// 1: manager; 2/5: research; 3/6/7: video; 8/9: SNS; 4/10: review.
+const desks=[[500,20],[105,330],[502,330],[565,675],[265,330],[645,330],[770,330],[105,675],[265,675],[725,675]];
 function plant(u,v){return at(u,v,0,`${rect(-17,-9,34,25,'#e1cf9c','#77633e')}${rect(-12,-4,24,15,'#f4e4b9')}${rect(-3,-58,6,48,'#597945')}${rect(-19,-45,18,13,'#749552')}${rect(1,-60,19,13,'#86a65c')}${rect(-16,-71,16,15,'#90ad64')}${rect(3,-34,18,12,'#63884b')}`);}
 function chair(u,v){return at(u,v,0,`${rect(-4,-10,8,22,'#596b56')}${rect(-27,8,54,5,'#535e4b')}${rect(-3,10,6,10,'#535e4b')}${rect(-26,-57,52,47,'#315b49','#213d32')}${rect(-20,-50,40,31,'#50785d')}${rect(-27,-18,54,13,'#456c52','#284735',2)}`);}
 function table(u,v,w=150){return at(u,v,0,`${rect(4,-48,w*1.35,48,'#9e7950','#654e36')}${rect(0,-60,w*1.35,29,'#e4c99a','#715938')}${rect(12,-24,9,36,'#776044')}${rect(w*1.35-17,-24,9,36,'#776044')}`);}
@@ -26,7 +28,7 @@ function executiveDesk(u,v){return at(u,v,0,`
 `);}
 function sofa(u,v,w=180){return at(u,v,0,`${rect(-4,-58,w*1.35+8,67,'#294d39','#233d2d')}${rect(4,-50,w*1.35-8,37,'#436b4d')}${rect(8,-9,w*1.35-16,20,'#527c59')}${rect(9,-46,48,30,'#8b9b64')}${rect(w*1.35-57,-46,43,30,'#c4c092')}${rect(8,10,10,13,'#594a35')}${rect(w*1.35-21,10,10,13,'#594a35')}`);}
 function elevator(){return at(705,25,0,`${rect(-61,-145,122,160,'#504f43','#312f28',5)}${rect(-50,-134,100,140,'#537163','#374a40')}${rect(-45,-125,40,115,'#799486')}${rect(5,-125,40,115,'#799486')}${rect(-4,-135,8,141,'#40584b')}${rect(-22,-179,44,25,'#2e4337','#8a9c75',2)}<text y="-161" text-anchor="middle" font-size="13" fill="#e4d39b">↕</text>`);}
-function room(view){if(['gym','lobby'].includes(view))return `<image data-room-art="${view}" href="${window.DongbaekAssets?.['assets/'+view+'-background.png']||'assets/'+view+'-background.png'}" x="0" y="0" width="1350" height="975" preserveAspectRatio="none"/>`;if(['director','pantry','roof'].includes(view)){const crop={director:'970 465 380 380',pantry:'280 0 750 560',roof:'0 300 600 440'}[view];return `<svg width="1350" height="975" viewBox="${crop}" preserveAspectRatio="xMidYMid slice"><image href="${window.DongbaekBackground||'assets/office-background.png'}" width="1350" height="975" preserveAspectRatio="none"/></svg>`;}if(view==='office')return atriumRoom();let s=`<defs><pattern id="db-pixel-planks" width="180" height="50" patternUnits="userSpaceOnUse">${rect(0,0,180,50,'#b98251')}${rect(0,0,180,3,'#8d633e')}${rect(0,46,180,4,'#96633d')}${rect(6,9,66,2,'#c59661')}${rect(90,31,72,2,'#c59661')}${rect(85,0,3,25,'#9d6c43')}${rect(27,25,3,25,'#9d6c43')}</pattern></defs>`;
+function room(view){if(view==='gym')return `<image data-room-art="${view}" href="${window.DongbaekAssets?.['assets/'+view+'-background.png']||'assets/'+view+'-background.png'}" x="0" y="0" width="1350" height="975" preserveAspectRatio="none"/>`;if(['director','pantry','roof'].includes(view)){const crop={director:'970 465 380 380',pantry:'280 0 750 560',roof:'0 300 600 440'}[view];return `<svg width="1350" height="975" viewBox="${crop}" preserveAspectRatio="xMidYMid slice"><image href="${window.DongbaekBackground||'assets/office-background.png'}" width="1350" height="975" preserveAspectRatio="none"/></svg>`;}if(view==='office')return atriumRoom();let s=`<defs><pattern id="db-pixel-planks" width="180" height="50" patternUnits="userSpaceOnUse">${rect(0,0,180,50,'#b98251')}${rect(0,0,180,3,'#8d633e')}${rect(0,46,180,4,'#96633d')}${rect(6,9,66,2,'#c59661')}${rect(90,31,72,2,'#c59661')}${rect(85,0,3,25,'#9d6c43')}${rect(27,25,3,25,'#9d6c43')}</pattern></defs>`;
 s+=rect(116,181,1118,712,'#292f28')+rect(128,194,1094,682,view==='roof'?'#8aab67':'url(#db-pixel-planks)','#d7bf80',5);
 if(view==='roof'){
 s+=rect(145,214,1058,640,'#9ab976','#67814c',5);for(let i=0;i<9;i++)s+=rect(175+i*125,213,5,640,'#90b16b');s+=rect(128,171,1094,29,'#b6c7a1','#657851')+rect(128,200,18,677,'#b6c7a1')+rect(1205,200,18,677,'#b6c7a1')+rect(128,863,1094,16,'#b6c7a1');return s+elevator();}
@@ -36,13 +38,44 @@ for(let x=155;x<1045;x+=222){s+=rect(x,91,204,100,'#263f36','#cfbb88',4)+rect(x+
 s+=rect(120,870,1112,26,'#5d715e','#313e32',3)+rect(120,884,1112,8,'#a4b9a0');
 return s+elevator()+label(670,57,'주식회사 동백 · PIXEL OFFICE',340);}
 function atriumRoom(){
- let scene='<rect width="1350" height="975" fill="#efe7d6"/><rect x="44" y="32" width="1262" height="902" rx="30" fill="#f8f4e8" stroke="#baa88c" stroke-width="7"/>';
- scene+='<rect x="65" y="90" width="1220" height="88" rx="13" fill="#dcebe5"/><text x="674" y="124" text-anchor="middle" font-weight="700" font-size="23" fill="#385a4d">주식회사 동백 · 4개 팀 공동 사무실</text><text x="674" y="152" text-anchor="middle" font-size="16" fill="#597367">총괄 중앙석 · 직원별 전용 책상 10개</text>';
- const zones=[{title:'1팀 · 조사·기획',x:56,y:353,w:413,h:195,fill:'#e5eddf'},{title:'2팀 · 영상·디자인',x:470,y:353,w:813,h:195,fill:'#e9e5f2'},{title:'3팀 · SNS 운영',x:56,y:549,w:818,h:194,fill:'#e6ecf4'},{title:'4팀 · 검수·성과',x:875,y:549,w:409,h:194,fill:'#f2ece2'}];
- for(const z of zones)scene+='<rect x="'+z.x+'" y="'+z.y+'" width="'+z.w+'" height="'+z.h+'" rx="16" fill="'+z.fill+'" opacity=".55"/><text x="'+(z.x+16)+'" y="'+(z.y+26)+'" font-size="16" fill="#536256">'+z.title+'</text>';
+ // A ten-seat workspace: manager outside all teams, four distinct team rooms,
+ // clear central passage and visual partitions. All geometry uses 1350x975 SVG units.
+ let scene='<rect width="1350" height="975" fill="#e7dfce"/>';
+ scene+='<rect x="40" y="36" width="1270" height="897" rx="24" fill="#faf6eb" stroke="#a99476" stroke-width="7"/>';
+ scene+='<text x="675" y="79" text-anchor="middle" font-size="21" font-weight="700" fill="#355a49">주식회사 동백 · AI 팀별 작업실</text>';
+ const zones=[
+  {id:'manager',x:74,y:96,w:1202,h:223,fill:'#e4eee3',edge:'#8dab92',title:'총괄매니저 · 업무분장 및 종합보고',subtitle:'GPT · 팀 전체 관제'},
+  {id:'research',x:74,y:338,w:534,h:260,fill:'#e9f1e2',edge:'#a2ba91',title:'1팀 · 조사·기획',subtitle:'Gemini · GPT / 2명'},
+  {id:'video',x:628,y:338,w:648,h:260,fill:'#eee7f1',edge:'#b6a1c6',title:'2팀 · 영상·디자인',subtitle:'Runway · Higgsfield · 편집 / 3명'},
+  {id:'sns',x:74,y:616,w:534,h:278,fill:'#e6eef7',edge:'#92adcd',title:'3팀 · SNS 운영',subtitle:'GPT · Claude / 2명'},
+  {id:'review',x:628,y:616,w:648,h:278,fill:'#f5eadc',edge:'#c7ae90',title:'4팀 · 검수·성과',subtitle:'Nemotron · GPT / 2명'}
+ ];
+ for(const z of zones){
+  scene+='<g data-team-zone="'+z.id+'"><rect x="'+z.x+'" y="'+z.y+'" width="'+z.w+'" height="'+z.h+'" rx="15" fill="'+z.fill+'" stroke="'+z.edge+'" stroke-width="4"/>';
+  scene+='<path d="M'+(z.x+18)+' '+(z.y+61)+'H'+(z.x+z.w-18)+'" stroke="'+z.edge+'" stroke-width="2" stroke-dasharray="8 6"/>';
+  if(z.id==='manager'){
+   scene+='<text x="135" y="184" font-size="23" font-weight="700" fill="#315b48">'+z.title+'</text>';
+   scene+='<text x="136" y="217" font-size="17" fill="#587766">'+z.subtitle+'</text>';
+   scene+='<text x="136" y="254" font-size="14" fill="#587766">팀 배정 → 진행 점검 → 결과 취합 → 대표 보고</text>';
+  }else{
+   scene+='<text x="'+(z.x+20)+'" y="'+(z.y+30)+'" font-size="21" font-weight="700" fill="#3d514a">'+z.title+'</text>';
+   scene+='<text x="'+(z.x+20)+'" y="'+(z.y+53)+'" font-size="14" fill="#66786e">'+z.subtitle+'</text>';
+  }
+  scene+='</g>';
+ }
+ // Narrow but explicit aisles; the two team halves are separated by room borders.
+ scene+='<rect x="608" y="338" width="20" height="556" fill="#e0d5c1" opacity=".55"/>';
+ scene+='<rect x="74" y="597" width="1202" height="19" fill="#e0d5c1" opacity=".55"/>';
  for(let i=0;i<desks.length;i++){
   const [u,v]=desks[i],[x,y]=project(u,v,0),manager=i===0;
-  scene+='<g data-office-desk="'+(i+1)+'" transform="translate('+x+' '+(y-35)+')"><rect x="-64" y="-9" width="128" height="14" rx="4" fill="#a48260"/><rect x="-58" y="-25" width="116" height="22" rx="5" fill="'+(manager?'#e5cd9d':'#d7c3a0')+'" stroke="#907959" stroke-width="2"/><rect x="-27" y="-65" width="54" height="38" rx="4" fill="#2e4f49"/><rect x="-22" y="-60" width="44" height="28" rx="2" fill="'+(['#7eaa9f','#8ba8ca','#b3a5c6'][i%3])+'"/><rect x="-9" y="-25" width="18" height="7" fill="#495b4b"/><rect x="-44" y="3" width="9" height="13" fill="#987f64"/><rect x="35" y="3" width="9" height="13" fill="#987f64"/></g>';
+  scene+='<g data-office-desk="'+(i+1)+'" transform="translate('+x+' '+(y-23)+')">';
+  scene+='<ellipse cy="15" rx="76" ry="17" fill="#73614b" opacity=".12"/>';
+  scene+='<rect x="-57" y="-23" width="114" height="26" rx="6" fill="'+(manager?'#dbc18f':'#d2b995')+'" stroke="#917858" stroke-width="2"/>';
+  scene+='<rect x="-26" y="-67" width="52" height="42" rx="4" fill="#2f5048" stroke="#253c35" stroke-width="2"/>';
+  scene+='<rect x="-20" y="-61" width="40" height="28" rx="2" fill="'+(['#8fb49e','#87a4c4','#b6a2c3'][i%3])+'"/>';
+  scene+='<rect x="-7" y="-25" width="14" height="7" fill="#466254"/>';
+  scene+='<rect x="-45" y="3" width="10" height="14" fill="#987f64"/><rect x="35" y="3" width="10" height="14" fill="#987f64"/>';
+  scene+='</g>';
  }
  return scene;
 }
