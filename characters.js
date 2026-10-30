@@ -10,7 +10,7 @@ function avatar(p,{pose='stand',bubble='',stale=false,view='office',seatSupport=
  const index=p.id===0?4:p.id===-1?1:p.id===-2?3:(p.id-1)%4;
  const seated=pose==='work'||pose==='sit';const mode=p.id===-2?'cleaner':view==='gym'&&p.id>0?'gym':pose==='coffee'?'coffee':seated?'working':'standing';
  const height=view==='director'?(p.id===0?360:220):view==='office'?(seated?135:170):p.id===-1?155:175;
- const id='paint-'+String(p.id).replace('-','n'),text=p.job+' · '+p.name;
+ const id='paint-'+String(p.id).replace('-','n'),text=p.id>0?p.name:p.job+' · '+p.name;
  const frame=(mode,first,second)=>`<g class="db-pose-frame-a">${sprite(mode,first,height,id+'a')}</g><g class="db-pose-frame-b">${sprite(mode,second,height,id+'b')}</g>`;
  // The desk's rear edge slopes down to the right. A horizontal cutoff left
  // the representative's torso floating above the desktop.
