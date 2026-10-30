@@ -37,14 +37,14 @@ function configured(env) {
   env.OFFICE_ACCESS_TOKEN.length <= 256 && /^[!-~]+$/.test(env.OFFICE_ACCESS_TOKEN) && env.OFFICE_ACCESS_TOKEN !== env.OPENAI_API_KEY &&
   !env.OFFICE_ACCESS_TOKEN.startsWith('sk-') && env.DB?.prepare;
 }
-async function readJSON(request) {
+async function readJSON(request, maximum = MAX_BODY) {
  if (!(request.headers.get('Content-Type') || '').toLowerCase().startsWith('application/json')) throw new Failure(415, 'json_required', 'JSON 형식으로 요청해 주세요.');
  const reader = request.body?.getReader(); if (!reader) throw new Failure(400, 'invalid_body', '업무 내용이 없습니다.');
  const chunks = []; let size = 0;
  while (true) {
   const { done, value } = await reader.read(); if (done) break;
   size += value.byteLength;
-  if (size > MAX_BODY) { await reader.cancel(); throw new Failure(413, 'too_large', '업무 내용이 너무 깁니다.'); }
+  if (size > maximum) { await reader.cancel(); throw new Failure(413, 'too_large', '업무 내용이 너무 깁니다.'); }
   chunks.push(value);
  }
  const bytes = new Uint8Array(size); let offset = 0;
@@ -82,7 +82,7 @@ export default {
    return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': ORIGIN, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '600', Vary: 'Origin' } });
   }
   try {
-   if (!['/api/status', '/api/jobs', '/api/result'].includes(url.pathname)) throw new Failure(404, 'not_found', '요청한 기능이 없습니다.');
+   if (!['/api/status', '/api/jobs', '/api/result', '/api/vision'].includes(url.pathname)) throw new Failure(404, 'not_found', '요청한 기능이 없습니다.');
    if (!configured(env)) throw new Failure(503, 'not_configured', '서버의 API 키, 사무실 접속 암호, DB 연결을 확인해 주세요.');
    if (!await authorized(request, env)) throw new Failure(401, 'unauthorized', '사무실 접속 암호가 맞지 않습니다.');
    await env.DB.prepare(schema).run();
@@ -97,6 +97,57 @@ export default {
     if (!row) throw new Failure(404, 'missing_job', '접수된 업무를 찾을 수 없습니다.');
     if (row.status !== 'done') throw new Failure(409, row.status === 'reserved' ? 'pending' : 'previous_attempt', row.status === 'reserved' ? '아직 결과가 준비되지 않았습니다. 잠시 후 다시 확인해 주세요.' : '이 업무는 결과 없이 종료됐습니다.');
     return json(completed(row, true), 200, origin);
+   }
+
+   if(request.method==='POST'&&url.pathname==='/api/vision'){
+    const body=await readJSON(request,260000);
+    if(!body||typeof body!=='object'||!/^[a-f0-9-]{36}$/i.test(body.id||'')||
+       !Array.isArray(body.frames)||body.frames.length<1||body.frames.length>3||
+       body.frames.some(frame=>typeof frame!=='string'||frame.length>90000||!/^data:image\/jpeg;base64,[a-zA-Z0-9+/]+={0,2}$/.test(frame)))
+      throw new Failure(400,'invalid_frames','실제 영상에서 추출한 JPG 대표 장면 최대 3개가 필요합니다.');
+    const fingerprint=await hash(JSON.stringify(body.frames));
+    const previous=await env.DB.prepare('SELECT * FROM gpt_jobs WHERE id = ?').bind(body.id).first();
+    if(previous){
+      const row=existing(previous,fingerprint);
+      try{return json({id:body.id,...JSON.parse(row.result),reused:true},200,origin);}
+      catch{throw new Failure(502,'vision_result_invalid','저장된 분석을 읽지 못했습니다.');}
+    }
+    const now=Date.now();
+    const reserved=await env.DB.prepare(`INSERT OR IGNORE INTO gpt_jobs (id,fingerprint,day,status,created)
+      SELECT ?,?,?,'reserved',? WHERE
+      (SELECT COUNT(*) FROM gpt_jobs WHERE day=?)<? AND
+      (SELECT COUNT(*) FROM gpt_jobs)<? AND
+      NOT EXISTS (SELECT 1 FROM gpt_jobs WHERE status='reserved' AND created>?)`)
+      .bind(body.id,fingerprint,day,now,day,DAILY_LIMIT,PILOT_LIMIT,now-120000).run();
+    if(!reserved.meta?.changes)throw new Failure(429,'vision_limit','작업 중이거나 AI 사용 한도에 도달했습니다. 자동 재시도하지 않습니다.');
+    try{
+      const remote=await fetch('https://api.openai.com/v1/responses',{
+       method:'POST',headers:{Authorization:'Bearer '+env.OPENAI_API_KEY,'Content-Type':'application/json'},
+       body:JSON.stringify({
+        model:MODEL,store:false,max_output_tokens:OUTPUT_LIMIT,
+        instructions:'당신은 업로드 영상에서 추출한 실제 프레임만 근거로 확인 가능한 사실을 기술하는 영상 편집자입니다. 사진에 없는 시설, 장소, 가격, 인물, 반려견 이름, 서비스는 추측하지 마세요. 오직 한국어 JSON 객체로 답하고 임의 홍보 문구는 쓰지 마세요.',
+        input:[{role:'user',content:[
+          {type:'input_text',text:'실제로 보이는 대상과 행동만 관찰하여 JSON 객체로 응답: visible(확인된 장면 설명 문자열 배열, 필수), uncertain(확인 필요 문자열), hook(55자 이하), caption(70자 이하), cta(영상에서 확인된 내용이 없으면 빈 문자열, 85자 이하), post(SNS 게시글 2400자 이하), hashtags(시각적으로 확인된 내용과 관련된 해시태그 문자열 배열, 10개 이하). 확인 불가 사항은 빈 문자열로 둡니다.'},
+          ...body.frames.map(image_url=>({type:'input_image',image_url}))
+        ]}]
+       }),signal:AbortSignal.timeout(45000),redirect:'manual'});
+      if(!remote.ok)throw new Failure(502,'vision_upstream','AI 이미지 분석 요청이 실패했습니다. 자동 재시도하지 않습니다.');
+      const payload=await remote.json();
+      const raw=(payload.output||[]).filter(x=>x.type==='message').flatMap(x=>x.content||[]).filter(x=>x.type==='output_text').map(x=>x.text).join('').trim();
+      let parsed;try{parsed=JSON.parse(raw);}catch{throw new Failure(502,'vision_format','AI 결과가 올바른 JSON이 아닙니다. 자막은 자동 적용하지 않습니다.');}
+      if(!Array.isArray(parsed.visible)||!parsed.visible.length||parsed.visible.some(v=>typeof v!=='string'))throw new Failure(502,'no_visible_evidence','분석 근거가 없어 자막을 만들지 않았습니다.');
+      const cut=(v,max)=>typeof v==='string'?v.slice(0,max):'';
+      const safe={visible:parsed.visible.slice(0,6).map(v=>cut(v,120)),uncertain:cut(parsed.uncertain,250),
+       hook:cut(parsed.hook,55),caption:cut(parsed.caption,70),cta:cut(parsed.cta,85),post:cut(parsed.post,2400),
+       hashtags:Array.isArray(parsed.hashtags)?parsed.hashtags.filter(x=>typeof x==='string'&&x.startsWith('#')&&x.length<32).slice(0,10):[]};
+      await env.DB.prepare("UPDATE gpt_jobs SET status='done',result=?,input_tokens=?,output_tokens=? WHERE id=?")
+       .bind(JSON.stringify(safe),payload.usage?.input_tokens||0,payload.usage?.output_tokens||0,body.id).run();
+      return json({id:body.id,...safe,reused:false},200,origin);
+    }catch(error){
+      await env.DB.prepare("UPDATE gpt_jobs SET status='failed' WHERE id=? AND status='reserved'").bind(body.id).run();
+      if(error instanceof Failure)throw error;
+      throw new Failure(502,'vision_uncertain','분석 요청 또는 저장이 실패했습니다. 과금 가능성이 있어 자동 재시도하지 않습니다.');
+    }
    }
    if (request.method !== 'POST' || url.pathname !== '/api/jobs') throw new Failure(405, 'method_not_allowed', '요청 방식을 확인해 주세요.');
    const task = validate(await readJSON(request));
