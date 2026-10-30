@@ -28,7 +28,7 @@
  const status=n('p','영상 소스를 업로드한 다음 시작하세요. WebM을 지원하지 않는 브라우저에서는 제작할 수 없습니다.');status.id='db-video-status';status.setAttribute('role','status');
  const canvas=n('canvas');canvas.id='db-video-canvas';canvas.width=720;canvas.height=1280;canvas.style.cssText='display:block;width:min(210px,100%);height:auto;border:1px solid #bfc8c0;border-radius:8px';
  const timeline=n('p','컷 구성: 0–2초 후킹 / 2–12초 시설·풍경 / 12–15초 예약 CTA');timeline.id='db-video-timeline';
- const playback=n('video');playback.id='db-video-playback';playback.controls=true;playback.playsInline=true;playback.hidden=true;playback.style.cssText='display:block;width:min(230px,100%);max-height:420px;margin:10px 0;border-radius:8px';
+ const playback=n('video');playback.id='db-video-playback';playback.controls=true;playback.playsInline=true;playback.hidden=true;playback.style.cssText='width:min(230px,100%);max-height:420px;margin:10px 0;border-radius:8px';
  const attribution=n('p','사진·동영상은 이 브라우저 안에서만 편집됩니다. 원본은 외부 AI 서버에 보내지 않으며, 제작된 영상은 직접 다운로드해야 보존됩니다.');
  root.append(form,timeline,preview,actions,status,canvas,playback,attribution);office.append(root);
  let selected=[],urls=[],run=null,finalUrl=null;
