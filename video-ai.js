@@ -28,41 +28,86 @@
  let previews=[],images=[],busy=false,confirmed=false;
  function reset(){previews=[];images=[];confirmed=false;frames.replaceChildren();results.style.display='none';checkbox.checked=false;status.textContent='분석 전: 영상에 기본 자막을 넣지 않습니다.';}
  files.addEventListener('change',reset);
- const wait=(node,event)=>new Promise((resolve,reject)=>{
-  const timer=setTimeout(()=>{stop();reject(Error('영상 프레임을 읽는 시간이 초과됐습니다.'));},10000);
-  const done=()=>{stop();resolve();},fail=()=>{stop();reject(Error('이 영상에서 프레임을 추출할 수 없습니다.'));};
+ const wait=(node,event,timeout=10000)=>new Promise((resolve,reject)=>{
+  const timer=setTimeout(()=>{stop();reject(Error('영상 읽기 시간이 초과됐습니다.'));},timeout);
+  const done=()=>{stop();resolve();},fail=()=>{stop();reject(Error('영상 프레임을 읽지 못했습니다.'));};
   const stop=()=>{clearTimeout(timer);node.removeEventListener(event,done);node.removeEventListener('error',fail);};
-  node.addEventListener(event,done,{once:true});node.addEventListener('error',fail,{once:true});
+  node.addEventListener(event,done,{once:true});node.addEventListener('error',fail);
  });
- async function snapshot(file,ratio){
+ function makeFrame(media,isImage){
+  const w=isImage?media.naturalWidth:media.videoWidth,h=isImage?media.naturalHeight:media.videoHeight;
+  if(!w||!h)throw Error('프레임 크기를 읽지 못했습니다.');
+  const canvas=document.createElement('canvas'),scale=Math.min(1,384/Math.max(w,h));
+  canvas.width=Math.max(1,Math.round(w*scale));canvas.height=Math.max(1,Math.round(h*scale));
+  canvas.getContext('2d').drawImage(media,0,0,canvas.width,canvas.height);
+  const sample=document.createElement('canvas');sample.width=16;sample.height=16;
+  const ctx=sample.getContext('2d',{willReadFrequently:true});ctx.drawImage(canvas,0,0,16,16);
+  const rgba=ctx.getImageData(0,0,16,16).data,signature=[];
+  for(let i=0;i<rgba.length;i+=4)signature.push((rgba[i]+rgba[i+1]+rgba[i+2])/3);
+  return {image:canvas.toDataURL('image/jpeg',0.53),signature};
+ }
+ function different(a,b){
+  if(!a||!b||a.length!==b.length)return true;
+  let delta=0;for(let i=0;i<a.length;i++)delta+=Math.abs(a[i]-b[i]);
+  return delta/a.length>6;
+ }
+ async function seekTo(video,target){
+  const duration=video.duration;
+  if(!Number.isFinite(duration)||duration<=0)throw Error('영상 길이를 확인하지 못했습니다.');
+  const second=Math.max(0,Math.min(Math.max(0,duration-0.035),target*duration));
+  if(Math.abs(video.currentTime-second)<0.012&&video.readyState>=2)return;
+  // Install the listener before setting currentTime, then wait for the exact seek to finish.
+  const sought=wait(video,'seeked');
+  video.currentTime=second;
+  await sought;
+  if(video.readyState<2)await wait(video,'loadeddata');
+ }
+ async function framesOf(file,count){
   const url=URL.createObjectURL(file),isImage=file.type.startsWith('image/'),media=document.createElement(isImage?'img':'video');
   try{
-   media.src=url;
-   if(isImage){if(!media.complete)await wait(media,'load');}
-   else{
-    media.muted=true;media.playsInline=true;media.preload='auto';
-    if(media.readyState<1)await wait(media,'loadedmetadata');
-    const duration=Number.isFinite(media.duration)?media.duration:0;
-    if(duration>0&&ratio>0){media.currentTime=Math.max(0,Math.min(duration-0.05,duration*ratio));await wait(media,'seeked');}
-    else if(media.readyState<2)await wait(media,'loadeddata');
+   if(isImage){
+    const loaded=wait(media,'load');media.src=url;
+    if(!media.complete||!media.naturalWidth)await loaded;
+    return [makeFrame(media,true)];
    }
-   const w=isImage?media.naturalWidth:media.videoWidth,h=isImage?media.naturalHeight:media.videoHeight;
-   if(!w||!h)throw Error('프레임 크기를 읽지 못했습니다.');
-   const c=document.createElement('canvas'),scale=Math.min(1,448/Math.max(w,h));c.width=Math.max(1,Math.round(w*scale));c.height=Math.max(1,Math.round(h*scale));
-   c.getContext('2d').drawImage(media,0,0,c.width,c.height);
-   return c.toDataURL('image/jpeg',0.62);
-  }finally{media.removeAttribute('src');media.load?.();URL.revokeObjectURL(url);}
+   media.muted=true;media.playsInline=true;media.preload='auto';
+   const loaded=wait(media,'loadedmetadata');media.src=url;
+   if(media.readyState<1)await loaded;
+   // Reuse the SAME decoded video element for all timestamps; independent players can
+   // capture the first frame repeatedly before their decoders update.
+   const chosen=[];
+   const times=count===1?[0.5]:[0.12,0.5,0.88,0.25,0.75,0.38,0.62,0.04,0.96];
+   for(const time of times){
+    await seekTo(media,time);
+    const frame=makeFrame(media,false);
+    if(chosen.every(previous=>different(previous.signature,frame.signature)))chosen.push(frame);
+    if(chosen.length>=count)break;
+   }
+   return chosen;
+  }finally{
+   if(!isImage)media.pause();
+   media.removeAttribute('src');if(!isImage)media.load();
+   URL.revokeObjectURL(url);
+  }
  }
  inspect.onclick=async()=>{
-  if(busy)return;busy=true;inspect.disabled=true;reset();status.textContent='영상 장면을 추출하고 있습니다.';
+  if(busy)return;busy=true;inspect.disabled=true;reset();status.textContent='영상의 서로 다른 시간대를 확인하고 있습니다.';
   try{
-   const sources=[...files.files||[]].slice(0,3);if(!sources.length)throw Error('실제 사진이나 영상을 먼저 선택하세요.');
-   const ratios=sources.length===1?[0.12,0.5,0.85]:sources.map((_,i)=>i===0?0.25:i===1?0.55:0.75);
-   for(let i=0;i<ratios.length;i++){
-    const src=sources[sources.length===1?0:i],img=await snapshot(src,ratios[i]);images.push(img);
-    const thumb=el('img');thumb.src=img;thumb.alt='원본 영상에서 추출한 '+(i+1)+'번 대표 장면';thumb.style.cssText='width:100px;height:125px;object-fit:contain;background:#213730;border-radius:6px';frames.append(thumb);
+   const sources=[...(files.files||[])].slice(0,3);if(!sources.length)throw Error('실제 사진이나 영상을 먼저 선택하세요.');
+   const target=sources.length===1?3:1;
+   for(const src of sources){
+    const extracted=await framesOf(src,target);
+    for(const frame of extracted){
+     if(images.length>=3)break;
+     if(images.some(previous=>!different(previous.signature,frame.signature)))continue;
+     images.push(frame);
+    }
    }
-   status.textContent=images.length+'개 장면 추출 완료 · 원본은 서버에 전송하지 않았습니다. AI 분석은 별도 동의 후 가능합니다.';
+   if(!images.length)throw Error('추출 가능한 장면이 없습니다.');
+   for(const item of images){
+    const thumb=el('img');thumb.src=item.image;thumb.alt='실제 원본의 서로 다른 장면';thumb.style.cssText='width:100px;height:125px;object-fit:contain;background:#213730;border-radius:6px';frames.append(thumb);
+   }
+   status.textContent=images.length+'개 서로 다른 장면 추출 완료'+(images.length<3?' · 원본의 변화가 적어 같은 화면을 억지로 반복하지 않았습니다.':'')+' · 원본은 서버로 전송하지 않았습니다.';
   }catch(error){reset();status.textContent='장면 추출 실패: '+error.message;}
   finally{busy=false;inspect.disabled=false;}
  };
@@ -73,7 +118,7 @@
   if(typeof window.DongbaegVisionAnalyze!=='function'){status.textContent='AI 분석 서버가 아직 연결되지 않았습니다. 임의 자막은 생성하지 않습니다.';return;}
   busy=true;analyze.disabled=true;status.textContent='AI 분석 응답을 기다립니다. 자동 재호출하지 않습니다.';
   try{
-   const output=await window.DongbaegVisionAnalyze({frames:images});
+   const output=await window.DongbaegVisionAnalyze({frames:images.map(item=>item.image)});
    if(!output||!Array.isArray(output.visible)||!output.visible.length)throw Error('검증할 장면 근거가 없습니다.');
    const text=(k,max)=>typeof output[k]==='string'?output[k].slice(0,max):'';
    hook.value=text('hook',55);middle.value=text('caption',70);cta.value=text('cta',85);
