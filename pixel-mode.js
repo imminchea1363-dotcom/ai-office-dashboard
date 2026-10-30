@@ -99,7 +99,14 @@ function atriumRoom(){
  for(const [x,y] of [[110,573],[205,814]]){
   overlay+='<g transform="translate('+x+' '+y+')"><rect x="-20" y="-35" width="176" height="49" rx="7" fill="url(#db-team-wood)" stroke="#896846" stroke-width="4"/><rect x="46" y="-92" width="63" height="56" rx="5" fill="#354e49" stroke="#263d37" stroke-width="4"/><rect x="53" y="-84" width="49" height="39" rx="3" fill="#86aea4"/><rect x="73" y="-35" width="8" height="20" fill="#5e6458"/><rect x="-11" y="13" width="13" height="53" fill="#866442"/><rect x="136" y="13" width="13" height="53" fill="#866442"/></g>';
  }
- // An executive-looking lower-right nook is now an ordinary 4th-team workroom.
+ // Replace the stair-edge standing area with a continuous video production floor.
+ // The original monitors and collaboration furniture above it stay intact.
+ overlay+='<path d="M384 741Q443 714 523 724H945V975H383Z" fill="#c8a983" stroke="#897454" stroke-width="9"/>';
+ overlay+='<path d="M403 758H924V957H403Z" fill="#9fb7b5" fill-opacity=".43" stroke="#698a87" stroke-opacity=".7" stroke-width="4"/>';
+ overlay+='<path d="M426 785H898M426 865H898M426 938H898" stroke="#dbd4b5" stroke-opacity=".55" stroke-width="3"/>';
+ overlay+='<rect x="412" y="763" width="206" height="41" rx="10" fill="#f8f0de" stroke="#8574ad" stroke-width="2"/>';
+ overlay+='<text x="515" y="791" text-anchor="middle" font-size="19" font-weight="700" fill="#5b527c">2팀 · 영상제작 구역</text>';
+  // An executive-looking lower-right nook is now an ordinary 4th-team workroom.
  overlay+='<path d="M949 518Q962 504 989 504H1350V975H951Q935 967 937 946V548Q935 532 949 518Z" fill="url(#db-team-floor)" stroke="#806448" stroke-width="10"/>';
  overlay+='<path d="M947 540Q951 519 979 516H1350" fill="none" stroke="#587b70" stroke-width="19"/>';
  overlay+='<path d="M950 552V967" stroke="#d9ebe1" stroke-width="6" opacity=".85"/>';
