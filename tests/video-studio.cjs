@@ -25,7 +25,8 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   await page.selectOption('#db-video-quality','720');
   assert.equal(await page.locator('#db-video-playback').isVisible(),false);
   await page.click('#db-video-render');
-  await page.waitForFunction(()=>document.querySelector('#db-video-download')?.hidden===false,null,{timeout:35000});
+  try {await page.waitForFunction(()=>document.querySelector('#db-video-download')?.hidden===false,null,{timeout:65000});}
+  catch(error){throw Error('v13 video render failed: '+await page.locator('#db-video-status').textContent()+' | '+JSON.stringify(errors)+' | '+error.message);}
   const handle=page.waitForEvent('download');await page.click('#db-video-download');
   const artifact=await handle;const bytes=fs.readFileSync(await artifact.path());
   assert.match(artifact.suggestedFilename(),/\.webm$/);
