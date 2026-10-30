@@ -42,7 +42,13 @@ const server = http.createServer((req, res) => {
         await page.locator('#db-areas [data-view='+scene+']').click();
         await page.waitForFunction(() => [...document.querySelectorAll('[data-painted-sprite] img')].every(img=>img.complete&&img.naturalWidth>0));
         await page.locator('#db-world').screenshot({path:path.join(previews, name+'-'+scene+'.png')});
-        if (name === 'after') {
+        if(name === 'after'){
+          const jpeg=await page.locator('#db-world').screenshot({type:'jpeg',quality:65});
+          fs.writeFileSync(path.join(previews,'after-'+scene+'.jpg'),jpeg);
+          console.log('REVIEW_IMAGE:'+JSON.stringify({scene,base64:jpeg.toString('base64')}));
+        }
+      }
+      if (name === 'after') {
         assert.equal(await page.locator('#db-total').textContent(),'10');
         assert.equal(await page.locator('#db-areas [data-view=lobby]').count(),0);
         await page.locator('#db-areas [data-view=office]').click();
