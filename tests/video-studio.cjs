@@ -50,7 +50,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   await page.locator('[data-sns-video]').click();
   const linkedVideo=await linked;assert.match(linkedVideo.suggestedFilename(),/\.webm$/);
   assert.equal(await page.locator('#db-video-playback').isVisible(),true);
-  assert.match(await page.locator('#db-video-status').textContent(),/720×1280 무음 WEBM 완성/);
+  assert.match(await page.locator('#db-video-status').textContent(),/완성 영상과 SNS 초안을 연결/);
   const capability=await page.evaluate(()=>({
    mp4Supported:MediaRecorder.isTypeSupported('video/mp4;codecs=avc1.42E01E')||MediaRecorder.isTypeSupported('video/mp4'),
    mp4Disabled:document.querySelector('#db-video-format option[value=mp4]').disabled
