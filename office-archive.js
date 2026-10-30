@@ -147,6 +147,31 @@
   }
   return all;
  }
+ async function serializeVideos(){
+  const lib=window.DongbaegVideoLibrary;if(!lib)return [];
+  const rows=await lib.list();if(rows.reduce((sum,r)=>sum+r.blob.size,0)>45*1024*1024)throw Error('영상 백업 용량은 최대 45MB입니다. 일부 영상을 다운로드하고 정리해 주세요.');
+  const result=[];
+  for(const row of rows){
+   const magic=new Uint8Array(await row.blob.slice(0,12).arrayBuffer());
+   if(row.blob.type==='video/webm'&&!(magic[0]===26&&magic[1]===69&&magic[2]===223&&magic[3]===163))throw Error('손상된 WebM 영상으로 백업을 중단했습니다.');
+   if(row.blob.type==='video/mp4'&&String.fromCharCode(...magic.slice(4,8))!=='ftyp')throw Error('손상된 MP4 영상으로 백업을 중단했습니다.');
+   result.push({id:row.id,title:row.title,subtitle:row.subtitle,cta:row.cta,width:row.width,height:row.height,cuts:row.cuts,created:row.created,
+    media:{name:'office-video',type:row.blob.type,content:await base64(row.blob)}});
+  }
+  return result;
+ }
+ function reviveVideos(rows){
+  if(rows===undefined)return null;
+  if(!Array.isArray(rows)||rows.length>20)throw Error('영상 백업 목록은 최대 20개입니다.');
+  let bytesTotal=0;return rows.map(row=>{
+   if(!row||!row.media||!['video/mp4','video/webm'].includes(row.media.type))throw Error('영상 백업 형식이 잘못되었습니다.');
+   const data=decode(row.media.content);bytesTotal+=data.length;
+   if(data.length<1024||data.length>30*1024*1024||bytesTotal>45*1024*1024)throw Error('영상 백업 용량을 초과했습니다.');
+   if(row.media.type==='video/webm'&&!(data[0]===26&&data[1]===69&&data[2]===223&&data[3]===163))throw Error('WebM 헤더가 잘못되었습니다.');
+   if(row.media.type==='video/mp4'&&String.fromCharCode(...data.slice(4,8))!=='ftyp')throw Error('MP4 헤더가 잘못되었습니다.');
+   const {media,...rest}=row;return {...rest,blob:new Blob([data],{type:media.type})};
+  });
+ }
  function download(name,content){
   const url=URL.createObjectURL(new Blob([content],{type:'application/json;charset=utf-8'}));
   const a=node('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();
@@ -173,12 +198,12 @@
  backup.onclick=async()=>{
   backup.disabled=true;status.textContent='업무 기록과 포스터 파일을 백업하고 있습니다. 외부 전송하지 않습니다.';
   try{
-   const state=makeState(),desk=parseState(state),photos=await serializePosters(await readPosters(),desk);
-   const record={format:'dongbaek-office-full-backup',version:1,exported:new Date().toISOString(),data:state,posters:photos};
+   const state=makeState(),desk=parseState(state),photos=await serializePosters(await readPosters(),desk),videos=await serializeVideos();
+   const record={format:'dongbaek-office-full-backup',version:1,exported:new Date().toISOString(),data:state,posters:photos,videos};
    const bytes=JSON.stringify(record);
    if(bytes.length>MAX_FILE)throw Error('백업 파일 크기가 145MB를 초과했습니다.');
    download('동백사무실-전체백업-'+new Date().toISOString().slice(0,10)+'.json',bytes);
-   status.textContent='전체 백업 파일 생성 완료 · 업무 '+desk.jobs.length+'건 · 포스터 자료 '+photos.length+'건. 파일을 안전하게 보관하세요.';
+   status.textContent='전체 백업 파일 생성 완료 · 업무 '+desk.jobs.length+'건 · 포스터 '+photos.length+'건 · 영상 '+videos.length+'건. 파일을 안전하게 보관하세요.';
   }catch(error){status.textContent='백업 실패: '+(error.message||'브라우저 저장 공간을 확인해 주세요.');}
   finally{backup.disabled=false;}
  };
@@ -195,21 +220,25 @@
    if(Object.keys(JSON.parse(stored(MANAGER)||'{}')).length||Object.keys(JSON.parse(stored(PREVIEW_MANAGER)||'{}')).length)throw Error('현재 중단·대기 중인 총괄매니저 작업이 있어 복원할 수 없습니다. 결과를 확인하고 완료해 주세요.');
    if(hasActive(desk))throw Error('백업에 진행 중인 GPT 작업이 있어 안전한 자동 복원을 제한했습니다.');
    if(Object.keys(JSON.parse(archive.data.manager||'{}')).length||Object.keys(JSON.parse(archive.data.previewManager||'{}')).length)throw Error('중단된 총괄 업무 단계가 저장된 백업은 복원할 수 없습니다.');
-   const photos=revivePosters(archive.posters,desk);
+   const photos=revivePosters(archive.posters,desk),videos=reviveVideos(archive.videos);
    const proceed=window.confirm('현재 이 브라우저의 업무 기록·직원 매뉴얼을 선택한 백업 내용으로 교체합니다. 기존 자료를 백업했나요? 복원 후 화면을 새로고침합니다.');
    if(!proceed){status.textContent='복원을 취소했습니다. 현재 기록은 유지됩니다.';return;}
    // Keep the old images for rollback if browser text storage later fails.
    const oldPosters=await readPosters();
+   const lib=window.DongbaegVideoLibrary,oldVideos=videos!==null&&lib?await lib.list():null;
+   if(videos!==null&&!lib)throw Error('영상 보관함이 없어 영상 포함 백업을 복원할 수 없습니다.');
    await writePosters(photos);
+   try{if(videos!==null)await lib.replaceAll(videos);}
+   catch(error){await writePosters(oldPosters);throw error;}
    const changes=[[JOB,archive.data.desk],[MANUAL,archive.data.manual],[MANAGER,archive.data.manager],[PREVIEW_MANAGER,archive.data.previewManager],[SNS,archive.data.sns||'{"entries":[]}']];
    const before=changes.map(([key])=>[key,stored(key)]);
    try{for(const [key,value] of changes)localStorage.setItem(key,value);}
    catch(error){
     for(const [key,value] of before){try{if(value)localStorage.setItem(key,value);else localStorage.removeItem(key);}catch{}}
-    try{await writePosters(oldPosters);}catch{throw Error('복원 도중 저장 실패·사진 되돌리기 실패. 기존 백업 파일로 복원해 주세요.');}
+    try{await writePosters(oldPosters);if(oldVideos!==null)await lib.replaceAll(oldVideos);}catch{throw Error('복원 도중 저장 실패·영상/사진 되돌리기 실패. 기존 백업 파일로 복원해 주세요.');}
     throw Error('브라우저 공간 부족으로 업무 기록을 교체하지 못했습니다. 원래 사진과 기록을 되돌렸습니다.');
    }
-   status.textContent='복원 완료 · 업무 '+desk.jobs.length+'건 · 포스터 '+photos.length+'건. 화면을 새로고침합니다.';
+   status.textContent='복원 완료 · 업무 '+desk.jobs.length+'건 · 포스터 '+photos.length+'건 · 영상 '+(videos?.length||0)+'건. 화면을 새로고침합니다.';
    window.location.reload();
   }catch(error){status.textContent='복원 중단: '+(error.message||'백업 파일을 확인해 주세요.');}
   finally{restore.disabled=false;}
