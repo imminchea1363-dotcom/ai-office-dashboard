@@ -18,10 +18,10 @@ const line=(a,b,color='#b3c3a4',width=3)=>`<line x1="${P(...a)[0]}" y1="${P(...a
 function box(u,v,w,d,h,top='#e4d5b6',front='#c1b38e',side='#afa57f',z=0){return poly([[u,v,z+h],[u+w,v,z+h],[u+w,v+d,z+h],[u,v+d,z+h]],top)+poly([[u,v+d,z+h],[u+w,v+d,z+h],[u+w,v+d,z],[u,v+d,z]],front)+poly([[u+w,v,z+h],[u+w,v+d,z+h],[u+w,v+d,z],[u+w,v,z]],side);}
 function at(u,v,z,html){const [x,y]=P(u,v,z);return `<g transform="translate(${x} ${y})">${html}</g>`;}
 const initial=()=>[
-{id:1,name:'동백총괄매니져',job:'총괄',role:'총괄 매니져 · 프로젝트 운영',gender:'male',hair:'short',color:'#769e8b',state:'work',loc:'office',seat:0,reports:0},
-{id:2,name:'임채리사원',job:'자료조사',role:'사원 · 자료조사',gender:'female',hair:'bob',color:'#9f95c0',state:'work',loc:'office',seat:1,reports:0},
-{id:3,name:'임민채대리',job:'디자인·영상',role:'대리 · 디자인·영상',gender:'female',hair:'long',color:'#d9a6a2',state:'wait',loc:'gym',seat:2,reports:0},
-{id:4,name:'김검수사원',job:'검수',role:'사원 · 품질 검수',gender:'male',hair:'short',color:'#83a8bc',state:'work',loc:'office',seat:3,reports:0},
+{id:1,name:'동백총괄매니져',job:'총괄',role:'총괄매니저 · 전 팀 업무배정 및 종합관리',gender:'male',hair:'short',color:'#769e8b',state:'work',loc:'office',seat:0,reports:0},
+{id:2,name:'임채리사원',job:'자료조사',role:'1팀장 · 자료조사 / Gemini · 연결 검증 필요',gender:'female',hair:'bob',color:'#9f95c0',state:'work',loc:'office',seat:1,reports:0},
+{id:3,name:'임민채대리',job:'디자인·영상',role:'2팀장 · 디자인·영상 / Runway · 연결 검증 필요',gender:'female',hair:'long',color:'#d9a6a2',state:'wait',loc:'gym',seat:2,reports:0},
+{id:4,name:'김검수사원',job:'검수',role:'4팀장 · 품질검수 / Nemotron · 연결 검증 필요',gender:'male',hair:'short',color:'#83a8bc',state:'work',loc:'office',seat:3,reports:0},
 {id:5,name:'홍보기획 사원',job:'홍보기획',role:'1팀 · 홍보기획 / GPT · 연결 검증 필요',gender:'female',hair:'bob',color:'#bb9ab8',state:'work',loc:'office',seat:4,reports:0},
 {id:6,name:'광고영상 사원',job:'광고영상',role:'2팀 · AI 광고영상 / Higgsfield · 연결 검증 필요',gender:'male',hair:'short',color:'#8cb0aa',state:'work',loc:'office',seat:5,reports:0},
 {id:7,name:'영상편집 사원',job:'영상편집',role:'2팀 · 컷편집·자막 / CapCut·FFmpeg',gender:'female',hair:'long',color:'#b7a8d3',state:'work',loc:'office',seat:6,reports:0},
