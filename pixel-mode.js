@@ -6,7 +6,7 @@ const project=(u,v,z=0)=>currentView==='director'?[1050+(u-390)*1.6,450+(v-315)*
 const at=(u,v,z,html)=>{const [x,y]=project(u,v,z);return `<g transform="translate(${x} ${y})">${html}</g>`;};
 const rect=(x,y,w,h,fill,stroke='',sw=3)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" ${stroke?`stroke="${stroke}" stroke-width="${sw}"`:''}/>`;
 const label=(x,y,text,w=190)=>`<g transform="translate(${x} ${y})">${rect(-w/2,-13,w,28,'#fff2cb','#77633d',2)}<text y="6" text-anchor="middle" font-size="13" fill="#55472f">${E(text)}</text></g>`;
-const desks=[[475,87],[188,167],[275,52],[475,252],[630,160],[635,355]];
+const desks=[[362,58],[93,210],[350,210],[608,210],[93,403],[350,403],[608,403],[93,594],[350,594],[608,594]];
 function plant(u,v){return at(u,v,0,`${rect(-17,-9,34,25,'#e1cf9c','#77633e')}${rect(-12,-4,24,15,'#f4e4b9')}${rect(-3,-58,6,48,'#597945')}${rect(-19,-45,18,13,'#749552')}${rect(1,-60,19,13,'#86a65c')}${rect(-16,-71,16,15,'#90ad64')}${rect(3,-34,18,12,'#63884b')}`);}
 function chair(u,v){return at(u,v,0,`${rect(-4,-10,8,22,'#596b56')}${rect(-27,8,54,5,'#535e4b')}${rect(-3,10,6,10,'#535e4b')}${rect(-26,-57,52,47,'#315b49','#213d32')}${rect(-20,-50,40,31,'#50785d')}${rect(-27,-18,54,13,'#456c52','#284735',2)}`);}
 function table(u,v,w=150){return at(u,v,0,`${rect(4,-48,w*1.35,48,'#9e7950','#654e36')}${rect(0,-60,w*1.35,29,'#e4c99a','#715938')}${rect(12,-24,9,36,'#776044')}${rect(w*1.35-17,-24,9,36,'#776044')}`);}
@@ -35,7 +35,17 @@ for(let y=84;y<194;y+=22){s+=rect(131,y,1088,3,'#b1815b');for(let x=132+(y%44?0:
 for(let x=155;x<1045;x+=222){s+=rect(x,91,204,100,'#263f36','#cfbb88',4)+rect(x+6,97,192,87,'#83a69e');for(let j=0;j<5;j++)s+=rect(x+12+j*38,144-j%3*10,24,40+j%3*10,'#597e77');for(let k=1;k<4;k++)s+=rect(x+k*51,94,5,94,'#334f43');s+=rect(x+3,137,197,5,'#334f43');}
 s+=rect(120,870,1112,26,'#5d715e','#313e32',3)+rect(120,884,1112,8,'#a4b9a0');
 return s+elevator()+label(670,57,'주식회사 동백 · PIXEL OFFICE',340);}
-function atriumRoom(){return `<image data-live-background="true" href="${window.DongbaekBackground||'assets/office-background.png'}" x="0" y="0" width="1350" height="975" preserveAspectRatio="none"/>`; }
+function atriumRoom(){
+ let scene='<rect width="1350" height="975" fill="#efe7d6"/><rect x="44" y="32" width="1262" height="902" rx="30" fill="#f8f4e8" stroke="#baa88c" stroke-width="7"/>';
+ scene+='<rect x="65" y="90" width="1220" height="88" rx="13" fill="#dcebe5"/><text x="674" y="124" text-anchor="middle" font-weight="700" font-size="23" fill="#385a4d">주식회사 동백 · 4개 팀 공동 사무실</text><text x="674" y="152" text-anchor="middle" font-size="16" fill="#597367">총괄 중앙석 · 직원별 전용 책상 10개</text>';
+ const zones=[{title:'1팀 · 조사·기획',x:56,y:353,w:413,h:195,fill:'#e5eddf'},{title:'2팀 · 영상·디자인',x:470,y:353,w:813,h:195,fill:'#e9e5f2'},{title:'3팀 · SNS 운영',x:56,y:549,w:818,h:194,fill:'#e6ecf4'},{title:'4팀 · 검수·성과',x:875,y:549,w:409,h:194,fill:'#f2ece2'}];
+ for(const z of zones)scene+='<rect x="'+z.x+'" y="'+z.y+'" width="'+z.w+'" height="'+z.h+'" rx="16" fill="'+z.fill+'" opacity=".55"/><text x="'+(z.x+16)+'" y="'+(z.y+26)+'" font-size="16" fill="#536256">'+z.title+'</text>';
+ for(let i=0;i<desks.length;i++){
+  const [u,v]=desks[i],[x,y]=project(u,v,0),manager=i===0;
+  scene+='<g data-office-desk="'+(i+1)+'" transform="translate('+x+' '+(y-35)+')"><rect x="-64" y="-9" width="128" height="14" rx="4" fill="#a48260"/><rect x="-58" y="-25" width="116" height="22" rx="5" fill="'+(manager?'#e5cd9d':'#d7c3a0')+'" stroke="#907959" stroke-width="2"/><rect x="-27" y="-65" width="54" height="38" rx="4" fill="#2e4f49"/><rect x="-22" y="-60" width="44" height="28" rx="2" fill="'+(['#7eaa9f','#8ba8ca','#b3a5c6'][i%3])+'"/><rect x="-9" y="-25" width="18" height="7" fill="#495b4b"/><rect x="-44" y="3" width="9" height="13" fill="#987f64"/><rect x="35" y="3" width="9" height="13" fill="#987f64"/></g>';
+ }
+ return scene;
+}
 function legacyAtriumRoom(){
  let s=`<defs><pattern id="db-atrium-ash" width="150" height="48" patternUnits="userSpaceOnUse">${rect(0,0,150,48,'#cfab7c')}${rect(0,0,150,2,'#b68f61')}${rect(70,0,2,24,'#bd986b')}${rect(20,24,2,24,'#bd986b')}${rect(8,10,42,2,'#dfbd8c')}</pattern></defs>`;
  s+=rect(116,181,1118,712,'#413b2d')+rect(128,194,1094,682,'url(#db-atrium-ash)','#bdae83',5);
