@@ -17,17 +17,28 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
    const dt=new DataTransfer();dt.items.add(photo);
    const input=document.getElementById('db-video-files');input.files=dt.files;input.dispatchEvent(new Event('change',{bubbles:true}));
   });
-  await page.waitForFunction(()=>document.querySelector('#db-video-status')?.textContent.includes('1개 자료 선택'));
+  await page.waitForFunction(()=>document.querySelector('#db-video-status')?.textContent.includes('1개 실제 자료 선택'));
   assert.equal(await page.locator('#db-video-preview img').count(),1);
   await page.fill('#db-video-title','우리만 아는 바다');
   await page.fill('#db-video-subtitle','반려견과 함께');
+  await page.selectOption('#db-video-format','webm');
+  await page.selectOption('#db-video-quality','720');
+  assert.equal(await page.locator('#db-video-playback').isVisible(),false);
   await page.click('#db-video-render');
-  await page.waitForFunction(()=>document.querySelector('#db-video-download')?.hidden===false,null,{timeout:35000});
+  try {await page.waitForFunction(()=>document.querySelector('#db-video-download')?.hidden===false,null,{timeout:65000});}
+  catch(error){throw Error('v13 video render failed: '+await page.locator('#db-video-status').textContent()+' | '+JSON.stringify(errors)+' | '+error.message);}
   const handle=page.waitForEvent('download');await page.click('#db-video-download');
   const artifact=await handle;const bytes=fs.readFileSync(await artifact.path());
   assert.match(artifact.suggestedFilename(),/\.webm$/);
   assert.ok(bytes.length>1000,'WebM payload must contain actual media');
   assert.deepEqual([...bytes.subarray(0,4)],[0x1a,0x45,0xdf,0xa3],'EBML signature should be real WebM');
+  assert.equal(await page.locator('#db-video-playback').isVisible(),true);
+  assert.match(await page.locator('#db-video-status').textContent(),/720×1280 무음 WEBM 완성/);
+  const capability=await page.evaluate(()=>({
+   mp4Supported:MediaRecorder.isTypeSupported('video/mp4;codecs=avc1.42E01E')||MediaRecorder.isTypeSupported('video/mp4'),
+   mp4Disabled:document.querySelector('#db-video-format option[value=mp4]').disabled
+  }));
+  assert.equal(capability.mp4Disabled,!capability.mp4Supported);
   assert.equal(gptRequests.length,0,'No charged GPT calls during local video render');
   assert.deepEqual(errors,[]);
   console.log('PASS Minchae video: assigned design/video role, real 15s vertical WebM, no GPT calls or posts');
