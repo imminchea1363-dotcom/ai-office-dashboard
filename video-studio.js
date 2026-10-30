@@ -211,6 +211,10 @@
   toSns.disabled=true;
   try{
    const row=await persistVideo();
+   if(linkedJobId){
+    const job=JSON.parse(localStorage.getItem('dongbaek-ai-desk-v1')||'{}').jobs?.find(j=>j.id===linkedJobId);
+    if(!job||job.videoId!==row.id||job.videoReview!=='approved'){status.textContent='대표실에서 완성 영상을 검수 승인한 뒤 SNS 초안으로 연결해 주세요.';return;}
+   }
    document.dispatchEvent(new CustomEvent('dongbaek-video-to-sns',{detail:{videoId:row.id,title:row.title,subtitle:row.subtitle,cta:row.cta}}));
    status.textContent='완성 영상과 SNS 초안을 연결했습니다. 검수 후 대표 승인으로 진행하세요. 실제 SNS 게시가 실행된 것은 아닙니다.';
   }catch(error){status.textContent='SNS 초안 연결 실패: '+(error.message||'영상 저장 공간을 확인하세요.');}

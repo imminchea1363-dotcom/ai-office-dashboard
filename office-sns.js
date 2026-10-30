@@ -163,7 +163,10 @@
   if(typeof id!=='string'||id.length>110||!window.DongbaegVideoLibrary){info.textContent='영상 연결 요청이 올바르지 않습니다.';return;}
   const video=await window.DongbaegVideoLibrary.get(id);
   if(!video){info.textContent='영상 보관함에서 완성 파일을 찾지 못했습니다.';return;}
-  sourceVideoId=id;sourceJobId='';
+  let linked=null;
+  try{linked=JSON.parse(localStorage.getItem('dongbaek-ai-desk-v1')||'{}').jobs?.find(j=>j.videoId===id);}catch{}
+  if(linked&&linked.videoReview!=='approved'){info.textContent='대표실 영상 검수 승인 후 SNS 초안으로 연결할 수 있습니다.';return;}
+  sourceVideoId=id;sourceJobId=linked?.id||'';
   input.value=clean(video.title,100);
   caption.value=clean([video.title,video.subtitle,video.cta].filter(Boolean).join('\n'),3000);
   select.value='인스타그램';
@@ -180,13 +183,17 @@
    result=Array.isArray(saved.jobs)?saved.jobs.find(j=>j.id===id):null;
   }catch{}
   if(!result||!result.result||['generating','pending'].includes(result.status)){info.textContent='직원 업무 결과가 저장된 작업만 SNS 초안으로 전달할 수 있습니다.';return;}
-  sourceJobId=id;
+  if(result.videoId){
+   if(result.videoReview!=='approved'){info.textContent='대표실 영상 검수 승인이 필요합니다.';return;}
+   if(!await window.DongbaegVideoLibrary?.get(result.videoId)){info.textContent='영상 보관함에서 완성 파일을 찾지 못했습니다.';return;}
+  }
+  sourceJobId=id;sourceVideoId=result.videoId||'';
   const content=clean(result.result,3000);
   const title=clean(result.title,100);
   input.value=title;
   caption.value=content;
   const poster=await inspectPoster(id);
-  const suffix=poster?' · 포스터 PNG 저장됨':' · 연결된 PNG 없음';
+  const suffix=result.videoId?' · 완성 영상 보관함 연결':poster?' · 포스터 PNG 저장됨':' · 연결된 PNG 없음';
   origin.textContent='직원 결과 연결: '+title+suffix;
   info.textContent='직원 결과를 복사했습니다. 문구는 게시글에 맞게 수정하고 대표 승인 후 직접 게시하세요. 자동 실행은 하지 않습니다.';
   section.scrollIntoView({behavior:'smooth',block:'start'});
