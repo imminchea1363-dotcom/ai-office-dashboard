@@ -1,0 +1,44 @@
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');
+(async()=>{
+ const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
+ const context=await browser.newContext({serviceWorkers:'block'});
+ const page=await context.newPage(),errors=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ const base=process.env.APP_TEST_URL||'http://localhost:3000';
+ try{
+  await page.route(/https:\/\/(open\.spotify\.com|www\.youtube\.com)\/embed\//,route=>route.fulfill({status:200,contentType:'text/html',body:'<html><body>Official provider embed stub; music playback not simulated</body></html>'}));
+  await page.goto(base);
+  await page.click('#db-office-music-open');
+  assert.equal(await page.locator('#db-office-music').isVisible(),true);
+  const parsed=await page.evaluate(()=>DongbaekOfficeMusic.parseLink('https://open.spotify.com/playlist/37i9dQZF1DXe5W6diBL5N4?si=token'));
+  assert.equal(parsed.embed,'https://open.spotify.com/embed/playlist/37i9dQZF1DXe5W6diBL5N4');
+  await page.locator('[data-music-preset="최신 가요"]').click();
+  const iframe=page.locator('#db-office-music-player iframe');
+  assert.equal(await iframe.count(),1);
+  assert.match(await iframe.getAttribute('src'),/^https:\/\/open\.spotify\.com\/embed\/playlist\/[A-Za-z0-9]{22}$/);
+  assert.equal(await page.evaluate(()=>DongbaekOfficeMusic.active()),true);
+  await page.locator('#db-areas [data-view="gym"]').click();
+  await page.waitForTimeout(100);
+  assert.equal(await iframe.count(),1,'scene changes must not remove music player');
+  assert.equal(await page.evaluate(()=>DongbaekGymMusic.state().playing),false,'gym synthetic soundtrack must be off when streaming');
+  await page.click('#db-office-music-stop');
+  assert.equal(await iframe.count(),0,'stopping must unload the provider embed');
+  assert.equal(await page.evaluate(()=>DongbaekOfficeMusic.active()),false);
+  await page.fill('#db-office-music-url','https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+  await page.click('#db-office-music-load');
+  assert.match(await iframe.getAttribute('src'),/^https:\/\/www\.youtube\.com\/embed\/dQw4w9WgXcQ\?playsinline=1$/);
+  await page.fill('#db-office-music-url','javascript:alert(1)');
+  await page.click('#db-office-music-load');
+  assert.match(await page.locator('#db-office-music-status').textContent(),/공식 HTTPS|공유 주소/);
+  assert.equal(await iframe.count(),1,'invalid source must not replace the player');
+  await page.click('#db-office-music-close');
+  assert.equal(await iframe.count(),0);
+  await page.reload();
+  await page.click('#db-office-music-open');
+  assert.match(await page.locator('#db-office-music-url').inputValue(),/^https:\/\/www\.youtube\.com\/watch\?v=/);
+  assert.equal(await page.locator('#db-office-music-player iframe').count(),0,'never autoplay on reload');
+  assert.deepEqual(errors,[]);
+  console.log('PASS official music: K-pop Spotify, YouTube, scene persistence, gym conflict, safe URL rejection, stop, memory, no autoplay');
+ }finally{await context.close();await browser.close();}
+})().catch(e=>{console.error(e);process.exit(1);});
