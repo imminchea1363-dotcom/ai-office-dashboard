@@ -19,6 +19,9 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   });
   await page.waitForFunction(()=>document.querySelector('#db-video-status')?.textContent.includes('1개 실제 자료 선택'));
   assert.equal(await page.locator('#db-video-preview img').count(),1);
+  assert.equal(await page.locator('[data-video-cut]').count(),1);
+  await page.locator('[data-video-caption="0"]').fill('반려견과 함께 보는 진짜 바다');
+  assert.match(await page.locator('#db-video-timeline').textContent(),/1컷/);
   await page.fill('#db-video-title','우리만 아는 바다');
   await page.fill('#db-video-subtitle','반려견과 함께');
   await page.selectOption('#db-video-format','webm');
@@ -32,6 +35,20 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   assert.match(artifact.suggestedFilename(),/\.webm$/);
   assert.ok(bytes.length>1000,'WebM payload must contain actual media');
   assert.deepEqual([...bytes.subarray(0,4)],[0x1a,0x45,0xdf,0xa3],'EBML signature should be real WebM');
+  assert.equal(await page.locator('#db-video-playback').isVisible(),true);
+  await page.click('#db-video-save');
+  await page.waitForFunction(()=>document.querySelector('#db-video-status')?.textContent.includes('보관함 저장 완료'));
+  const records=await page.evaluate(()=>DongbaegVideoLibrary.list().then(x=>x.map(r=>({id:r.id,cuts:r.cuts,size:r.blob.size}))));
+  assert.equal(records.length,1);
+  assert.equal(records[0].cuts[0].caption,'반려견과 함께 보는 진짜 바다');
+  await page.click('#db-video-to-sns');
+  await page.waitForFunction(()=>document.querySelector('#db-sns-source')?.textContent.includes('완성 영상 연결'));
+  assert.equal(await page.locator('#db-sns-title').inputValue(),'우리만 아는 바다');
+  await page.locator('#db-sns-save').click();
+  await page.waitForFunction(()=>document.querySelector('[data-sns-video]')!==null);
+  const linked=page.waitForEvent('download');
+  await page.locator('[data-sns-video]').click();
+  const linkedVideo=await linked;assert.match(linkedVideo.suggestedFilename(),/\.webm$/);
   assert.equal(await page.locator('#db-video-playback').isVisible(),true);
   assert.match(await page.locator('#db-video-status').textContent(),/720×1280 무음 WEBM 완성/);
   const capability=await page.evaluate(()=>({
