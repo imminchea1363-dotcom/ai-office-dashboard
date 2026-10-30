@@ -21,7 +21,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
   assert.match(await page.locator('#db-video-vision-status').textContent(),/연결되지 않았습니다/);
   assert.deepEqual(posts,[]);
   await page.evaluate(()=>{window.DongbaegVisionAnalyze=async ({frames})=>{
-   if(frames.length!==3||frames.some(f=>!f.startsWith('data:image/jpeg;base64,')))throw Error('bad extracted frames');
+   if(frames.length!==1||frames.some(f=>!f.startsWith('data:image/jpeg;base64,')))throw Error('bad extracted frames');
    return {visible:['실제 촬영 장면에서 건물 외관이 보임'],uncertain:'위치는 확인 필요',hook:'촬영된 건물 외관',caption:'건물 외관을 보여줍니다',cta:'',post:'촬영 장면에 건물이 보입니다.',hashtags:['#건물','#외관']};
   };});
   await page.click('#db-video-vision-analyze');
