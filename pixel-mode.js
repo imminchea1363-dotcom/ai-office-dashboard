@@ -10,7 +10,7 @@ const label=(x,y,text,w=190)=>`<g transform="translate(${x} ${y})">${rect(-w/2,-
 // 1: manager; 2/5: research; 3/6/7: video; 8/9: SNS; 4/10: review.
 // Seat anchors follow the preserved painted office: 1 manager, 2/5 research,
 // 3/6/7 video, 8/9 SNS, 4/10 quality. These do not draw new furniture.
-const desks=[[500,85],[270,54],[404,310],[759,554],[374,54],[533,316],[648,316],[733,91],[837,91],[848,554]];
+const desks=[[500,85],[270,54],[404,310],[710,554],[374,54],[533,316],[648,316],[718,91],[820,91],[800,554]];
 function plant(u,v){return at(u,v,0,`${rect(-17,-9,34,25,'#e1cf9c','#77633e')}${rect(-12,-4,24,15,'#f4e4b9')}${rect(-3,-58,6,48,'#597945')}${rect(-19,-45,18,13,'#749552')}${rect(1,-60,19,13,'#86a65c')}${rect(-16,-71,16,15,'#90ad64')}${rect(3,-34,18,12,'#63884b')}`);}
 function chair(u,v){return at(u,v,0,`${rect(-4,-10,8,22,'#596b56')}${rect(-27,8,54,5,'#535e4b')}${rect(-3,10,6,10,'#535e4b')}${rect(-26,-57,52,47,'#315b49','#213d32')}${rect(-20,-50,40,31,'#50785d')}${rect(-27,-18,54,13,'#456c52','#284735',2)}`);}
 function table(u,v,w=150){return at(u,v,0,`${rect(4,-48,w*1.35,48,'#9e7950','#654e36')}${rect(0,-60,w*1.35,29,'#e4c99a','#715938')}${rect(12,-24,9,36,'#776044')}${rect(w*1.35-17,-24,9,36,'#776044')}`);}
