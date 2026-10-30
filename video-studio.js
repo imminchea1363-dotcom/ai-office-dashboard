@@ -5,13 +5,13 @@
  const n=(tag,text)=>{const x=document.createElement(tag);if(text!==undefined)x.textContent=text;return x;};
  const root=n('section');root.id='db-video-studio';root.style.cssText='border:1px solid #b4c7c1;background:#f5faf8;color:#203f37;padding:16px;border-radius:12px;margin:14px 0';
  root.append(n('h3','임민채 대리 · 영상 제작실'));
- root.append(n('p','실제 촬영 사진·영상 최대 5개로 15초 세로 무음 숏폼을 제작합니다. MP4 지원 여부는 브라우저마다 다르며, 지원하지 않으면 WebM으로 출력합니다. 상업음악·자동 게시·외부 AI 서버 전송은 하지 않습니다.'));
+ root.append(n('p','실제 촬영 사진·영상 최대 5개로 15초 무음 세로 영상을 제작합니다. 기본 자막은 삽입하지 않습니다. 영상 장면 분석은 별도 명시 승인과 AI 서버 연결 후에만 실행됩니다.'));
  const form=n('div');form.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:9px';
  const label=(title,input)=>{const l=n('label',title);l.style.cssText='font-size:13px;font-weight:700;display:grid;gap:5px';l.append(input);form.append(l);return l;};
  const sources=n('input');sources.type='file';sources.id='db-video-files';sources.multiple=true;sources.accept='image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime';label('실제 사진·영상 선택 (최대 5개)',sources);
  const title=n('input');title.id='db-video-title';title.maxLength=55;title.placeholder='첫 2초 후킹 문구';label('영상 첫 문구',title);
  const subtitle=n('input');subtitle.id='db-video-subtitle';subtitle.maxLength=70;subtitle.placeholder='평일 낮, 우리만 아는 바다';label('중간 안내 문구',subtitle);
- const cta=n('input');cta.id='db-video-cta';cta.maxLength=85;cta.value='네이버에서 ‘포항 동백팬션’ 검색';label('마지막 3초 CTA',cta);
+ const cta=n('input');cta.id='db-video-cta';cta.maxLength=85;cta.value='';label('마지막 3초 CTA',cta);
  const format=n('select');format.id='db-video-format';
  for(const [value,name] of [['auto','자동 · MP4 우선'],['mp4','MP4 (지원 브라우저만)'],['webm','WebM']]){const opt=n('option',name);opt.value=value;format.append(opt);}
  label('출력 파일 형식',format);
@@ -74,9 +74,9 @@
   if(asset?.video&&asset.video.readyState>=2)cover(asset.video);
   const shade=ctx.createLinearGradient(0,0,0,640);shade.addColorStop(0,'rgba(0,20,24,.5)');shade.addColorStop(.48,'rgba(0,20,24,.04)');shade.addColorStop(1,'rgba(0,20,24,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,360,640);
   ctx.strokeStyle='rgba(255,255,255,.7)';ctx.lineWidth=1;ctx.strokeRect(18,18,324,604);
-  if(sec<2)wrapped(title.value||'동백팬션에서 쉬어가요',65,31,3);
-  if(sec>=2&&sec<12)wrapped(asset?.caption||subtitle.value||'바다를 바라보며 즐기는 휴식',455,24,3);
-  if(sec>=12){ctx.fillStyle='rgba(255,247,224,.96)';ctx.fillRect(20,496,320,100);ctx.fillStyle='#17463f';ctx.font='800 19px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillText('예약·상세 안내',180,529);ctx.fillStyle='#17463f';wrapped(cta.value||'네이버에서 포항 동백팬션 검색',552,19,2,'#17463f');}
+  if(sec<2)wrapped(title.value.trim(),65,31,3);
+  if(sec>=2&&sec<12)wrapped(asset?.caption||subtitle.value.trim(),455,24,3);
+  if(sec>=12&&cta.value.trim()){ctx.fillStyle='rgba(255,247,224,.96)';ctx.fillRect(20,496,320,100);ctx.fillStyle='#17463f';ctx.font='800 19px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillText('안내',180,529);wrapped(cta.value.trim(),552,19,2,'#17463f');}
   ctx.fillStyle='rgba(255,255,255,.85)';ctx.fillRect(20,610,320*Math.min(1,sec/15),4);
  }
  function updateTimeline(){
@@ -190,7 +190,7 @@
   const library=window.DongbaegVideoLibrary;
   if(!library)throw Error('영상 보관함을 불러오지 못했습니다.');
   if(savedVideoId){const existing=await library.get(savedVideoId);if(existing)return existing;}
-  const row=await library.save(completedBlob,{title:title.value||'동백팬션 15초 영상',subtitle:subtitle.value,cta:cta.value,
+  const row=await library.save(completedBlob,{title:title.value.trim()||'15초 영상',subtitle:subtitle.value,cta:cta.value,
    width:canvas.width,height:canvas.height,cuts:renderedCuts});
   savedVideoId=row.id;
   if(linkedJobId&&linkedVideoId!==row.id){
