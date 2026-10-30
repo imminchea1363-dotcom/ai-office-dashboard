@@ -10,7 +10,7 @@ const label=(x,y,text,w=190)=>`<g transform="translate(${x} ${y})">${rect(-w/2,-
 // 1: manager; 2/5: research; 3/6/7: video; 8/9: SNS; 4/10: review.
 // Seat anchors follow the preserved painted office: 1 manager, 2/5 research,
 // 3/6/7 video, 8/9 SNS, 4/10 quality. These do not draw new furniture.
-const desks=[[500,85],[270,54],[404,310],[710,554],[374,54],[533,316],[648,316],[718,91],[820,91],[800,554]];
+const desks=[[411,216],[37,390],[357,482],[686,599],[153,661],[510,596],[393,763],[693,151],[789,305],[809,758]];
 function plant(u,v){return at(u,v,0,`${rect(-17,-9,34,25,'#e1cf9c','#77633e')}${rect(-12,-4,24,15,'#f4e4b9')}${rect(-3,-58,6,48,'#597945')}${rect(-19,-45,18,13,'#749552')}${rect(1,-60,19,13,'#86a65c')}${rect(-16,-71,16,15,'#90ad64')}${rect(3,-34,18,12,'#63884b')}`);}
 function chair(u,v){return at(u,v,0,`${rect(-4,-10,8,22,'#596b56')}${rect(-27,8,54,5,'#535e4b')}${rect(-3,10,6,10,'#535e4b')}${rect(-26,-57,52,47,'#315b49','#213d32')}${rect(-20,-50,40,31,'#50785d')}${rect(-27,-18,54,13,'#456c52','#284735',2)}`);}
 function table(u,v,w=150){return at(u,v,0,`${rect(4,-48,w*1.35,48,'#9e7950','#654e36')}${rect(0,-60,w*1.35,29,'#e4c99a','#715938')}${rect(12,-24,9,36,'#776044')}${rect(w*1.35-17,-24,9,36,'#776044')}`);}
@@ -82,25 +82,53 @@ function rooftopFurniture(){
  +'</g>';
 }
 function atriumRoom(){
- // Preserve the original illustrated interior, furniture and architecture.
- const bg='<image data-live-background="true" href="' + (window.DongbaekBackground||'assets/office-background.png') + '" x="0" y="0" width="1350" height="975" preserveAspectRatio="none"/>';
+ // Keep the existing detailed background. The dog garden and the embedded
+ // 4F-looking executive office are replaced by illustrated TEAM WORKSPACE in 3F.
+ // Director's private office remains in the dedicated 4F scene only.
+ const art='<image data-live-background="true" href="'+(window.DongbaekBackground||'assets/office-background.png')+'" x="0" y="0" width="1350" height="975" preserveAspectRatio="none"/>';
+ const def='<defs><linearGradient id="db-team-wood" x1="0" x2="1"><stop stop-color="#e5ca9c"/><stop offset="1" stop-color="#cba878"/></linearGradient><linearGradient id="db-team-glass" x2=".7" y2="1"><stop stop-color="#9bc2b6" stop-opacity=".7"/><stop offset="1" stop-color="#f8eccc" stop-opacity=".45"/></linearGradient><pattern id="db-team-floor" width="84" height="43" patternUnits="userSpaceOnUse"><rect width="84" height="43" fill="#c69a66"/><path d="M0 0H84M0 42H84M42 0V42" stroke="#b78654" stroke-width="2"/><path d="M8 13h23M48 30h26" stroke="#e7ba84" stroke-width="2"/></pattern></defs>';
+ let overlay='<g id="db-office-refit" pointer-events="none">';
+ // The original dog-house is only on RF. Rebuild the lower-left terrace as 1F research desks.
+ overlay+='<path d="M0 380L323 361L372 438L373 975H0Z" fill="url(#db-team-floor)" stroke="#75573d" stroke-width="10"/>';
+ overlay+='<path d="M345 394V966M0 400L348 390" stroke="#557467" stroke-width="15" opacity=".92"/>';
+ overlay+='<path d="M352 391V969" stroke="#d7e4d7" stroke-width="5"/>';
+ overlay+='<path d="M26 500H320M30 738H320" stroke="#efdbbd" stroke-width="2" opacity=".75"/>';
+ overlay+='<rect x="22" y="414" width="284" height="42" rx="9" fill="#f5edd7" stroke="#719a82" stroke-width="3"/>';
+ overlay+='<text x="164" y="442" text-anchor="middle" font-size="20" font-weight="700" fill="#365d4c">1팀 · 조사·기획</text>';
+ // Natural matching desk props replace the old planter/dog-house footprint.
+ for(const [x,y] of [[50,573],[180,814]]){
+  overlay+='<g transform="translate('+x+' '+y+')"><rect x="-20" y="-35" width="176" height="49" rx="7" fill="url(#db-team-wood)" stroke="#896846" stroke-width="4"/><rect x="46" y="-92" width="63" height="56" rx="5" fill="#354e49" stroke="#263d37" stroke-width="4"/><rect x="53" y="-84" width="49" height="39" rx="3" fill="#86aea4"/><rect x="73" y="-35" width="8" height="20" fill="#5e6458"/><rect x="-11" y="13" width="13" height="53" fill="#866442"/><rect x="136" y="13" width="13" height="53" fill="#866442"/></g>';
+ }
+ // An executive-looking lower-right nook is now an ordinary 4th-team workroom.
+ overlay+='<path d="M949 518Q962 504 989 504H1350V975H951Q935 967 937 946V548Q935 532 949 518Z" fill="url(#db-team-floor)" stroke="#806448" stroke-width="10"/>';
+ overlay+='<path d="M947 540Q951 519 979 516H1350" fill="none" stroke="#587b70" stroke-width="19"/>';
+ overlay+='<path d="M950 552V967" stroke="#d9ebe1" stroke-width="6" opacity=".85"/>';
+ overlay+='<rect x="973" y="540" width="351" height="49" rx="10" fill="#fae8d0" stroke="#b48c59" stroke-width="3"/>';
+ overlay+='<text x="1148" y="573" text-anchor="middle" font-size="22" font-weight="700" fill="#72553b">4팀 · 검수·성과</text>';
+ for(const [x,y] of [[1012,725],[1160,874]]){
+  overlay+='<g transform="translate('+x+' '+y+')"><rect x="-25" y="-39" width="163" height="42" rx="7" fill="url(#db-team-wood)" stroke="#896443" stroke-width="4"/><rect x="30" y="-90" width="71" height="49" rx="5" fill="#344c48"/><rect x="35" y="-84" width="61" height="35" rx="2" fill="#9bb3a0"/><rect x="61" y="-40" width="8" height="18" fill="#5d6557"/><rect x="-5" y="4" width="12" height="44" fill="#806343"/><rect x="116" y="4" width="12" height="44" fill="#806343"/></g>';
+ }
+ overlay+='</g>';
  const focus=document.getElementById('db-stage')?.dataset.teamFocus||'all';
  const zones=[
-  {id:'research',x:425,y:90,w:250,h:232,color:'#4d8866',label:'1팀 · 조사·기획'},
-  {id:'video',x:485,y:335,w:555,h:325,color:'#8370b7',label:'2팀 · 영상·디자인'},
-  {id:'sns',x:1015,y:50,w:326,h:330,color:'#527da8',label:'3팀 · SNS 운영'},
-  {id:'quality',x:1065,y:515,w:274,h:419,color:'#a88153',label:'4팀 · 검수·성과'}
+  {id:'research',x:12,y:405,w:344,h:551,color:'#4d8866',label:'1팀 · 조사·기획'},
+  {id:'video',x:450,y:485,w:475,h:446,color:'#8370b7',label:'2팀 · 영상·디자인'},
+  {id:'sns',x:976,y:150,w:363,h:338,color:'#527da8',label:'3팀 · SNS 운영'},
+  {id:'quality',x:949,y:518,w:389,h:451,color:'#a88153',label:'4팀 · 검수·성과'}
  ];
- let marks='<g id="db-team-zones" pointer-events="none">';
+ overlay+='<g id="db-team-zones" pointer-events="none">';
  for(const z of zones){
   const active=focus===z.id,muted=focus!=='all'&&!active;
-  marks+='<g data-team-zone="'+z.id+'" opacity="'+(muted?'.32':'1')+'">';
-  marks+='<rect x="'+z.x+'" y="'+z.y+'" width="'+z.w+'" height="'+z.h+'" rx="18" fill="'+z.color+'" fill-opacity="'+(active?'.15':'.035')+'" stroke="'+z.color+'" stroke-opacity="'+(active?'.95':'.63')+'" stroke-width="'+(active?'5':'3')+'" stroke-dasharray="10 9"/>';
-  marks+='<rect x="'+(z.x+8)+'" y="'+(z.y+8)+'" width="166" height="29" rx="9" fill="#fff9e9" fill-opacity=".95" stroke="'+z.color+'" stroke-width="1.5"/>';
-  marks+='<text x="'+(z.x+91)+'" y="'+(z.y+28)+'" text-anchor="middle" font-size="14" font-weight="700" fill="#354b43">'+z.label+'</text></g>';
+  overlay+='<g data-team-zone="'+z.id+'" opacity="'+(muted?'.35':'1')+'">';
+  overlay+='<rect x="'+z.x+'" y="'+z.y+'" width="'+z.w+'" height="'+z.h+'" rx="19" fill="'+z.color+'" fill-opacity="'+(active?'.13':'.028')+'" stroke="'+z.color+'" stroke-opacity="'+(active?'.95':'.55')+'" stroke-width="'+(active?'5':'3')+'" stroke-dasharray="11 8"/>';
+  if(z.id==='video'||z.id==='sns'){
+   overlay+='<rect x="'+(z.x+14)+'" y="'+(z.y+14)+'" width="186" height="35" rx="9" fill="#fff8e8" stroke="'+z.color+'" stroke-width="2"/>';
+   overlay+='<text x="'+(z.x+107)+'" y="'+(z.y+38)+'" text-anchor="middle" font-size="19" font-weight="700" fill="#3a5146">'+z.label+'</text>';
+  }
+  overlay+='</g>';
  }
- marks+='<g data-team-zone="manager"><rect x="685" y="282" width="286" height="46" rx="12" fill="#fff9e8" fill-opacity=".93" stroke="#4c6f55" stroke-width="2"/><text x="828" y="309" text-anchor="middle" font-size="17" font-weight="700" fill="#3c5b48">총괄매니저 · 전 팀 업무관제</text></g></g>';
- return bg+marks;
+ overlay+='<g data-team-zone="manager"><rect x="548" y="317" width="334" height="43" rx="10" fill="#f9efd9" fill-opacity=".97" stroke="#4c6f55" stroke-width="3"/><text x="715" y="345" text-anchor="middle" font-size="19" font-weight="700" fill="#3c5b48">총괄매니저 · 전 팀 업무 관제</text></g></g>';
+ return def+art+overlay;
 }
 function legacyAtriumRoom(){
  let s=`<defs><pattern id="db-atrium-ash" width="150" height="48" patternUnits="userSpaceOnUse">${rect(0,0,150,48,'#cfab7c')}${rect(0,0,150,2,'#b68f61')}${rect(70,0,2,24,'#bd986b')}${rect(20,24,2,24,'#bd986b')}${rect(8,10,42,2,'#dfbd8c')}</pattern></defs>`;
