@@ -17,7 +17,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
   await page.click('#db-video-save');await page.waitForSelector('[data-video-review-job]');
   let saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('dongbaek-ai-desk-v1')).jobs[0]);
   assert.equal(saved.videoReview,'pending');const videoId=saved.videoId;
-  await page.click('#db-video-to-sns');assert.match(await page.locator('#db-video-status').textContent(),/検|검수 승인/);
+  await page.click('#db-video-to-sns');await page.waitForFunction(()=>document.querySelector('#db-video-status').textContent.includes('검수 승인'));assert.equal(await page.locator('#db-sns-title').inputValue(),'');
   await page.evaluate(id=>document.dispatchEvent(new CustomEvent('dongbaek-video-to-sns',{detail:{videoId:id}})),videoId);
   await page.waitForFunction(()=>document.querySelector('#db-sns-info')?.textContent.includes('승인')||document.body.textContent.includes('대표실 영상 검수 승인 후'));
   assert.equal(await page.locator('#db-sns-title').inputValue(),'');
