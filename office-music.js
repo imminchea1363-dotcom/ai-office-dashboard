@@ -90,6 +90,7 @@
  function store(url){try{localStorage.setItem(STORE,JSON.stringify({url}));}catch{}}
  function loadUrl(url){
   const p=resolve(url);
+  window.DongbaekRadio?.stopForStream?.();
   stopAudio();
   const frame=elem('iframe');frame.src=p.embed;frame.title=p.source==='spotify'?'Spotify 공식 음악 플레이어':'YouTube 공식 음악 플레이어';
   frame.height=p.source==='youtube'?'220':'200';frame.loading='eager';
