@@ -125,7 +125,7 @@
           if(!check.checked){notice('검수 항목을 확인해야 승인할 수 있습니다.');return;}
           if(!await window.DongbaegVideoLibrary?.get(job.videoId)){notice('저장된 영상이 없어 승인할 수 없습니다.');return;}
           if(!confirm('완성 영상만 승인할까요? SNS 게시는 실행되지 않습니다.'))return;
-          job.videoReview='approved';job.videoReviewNote='';job.updated=new Date().toISOString();persist();renderJobs();notice('영상 검수 승인 완료. 실제 SNS 게시 없음.');
+          job.videoReview='approved';job.videoReviewNote='';job.updated=new Date().toISOString();persist();renderJobs();document.dispatchEvent(new CustomEvent('dongbaek-video-review-approved',{detail:{jobId:job.id,videoId:job.videoId}}));notice('영상 검수 승인 완료. 실제 SNS 게시 없음.');
         };card.append(yes);
         const note=el('textarea');note.maxLength=600;note.placeholder='수정할 내용';note.dataset.videoReviewNote=job.id;card.append(note);
         const revise=el('button','수정 요청');revise.dataset.videoReviewRevise=job.id;revise.onclick=()=>{
