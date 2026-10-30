@@ -10,7 +10,7 @@ const label=(x,y,text,w=190)=>`<g transform="translate(${x} ${y})">${rect(-w/2,-
 // 1: manager; 2/5: research; 3/6/7: video; 8/9: SNS; 4/10: review.
 // Seat anchors follow the preserved painted office: 1 manager, 2/5 research,
 // 3/6/7 video, 8/9 SNS, 4/10 quality. These do not draw new furniture.
-const desks=[[411,216],[37,390],[357,482],[686,599],[153,661],[510,596],[393,763],[693,151],[789,305],[809,758]];
+const desks=[[411,216],[37,390],[357,482],[686,599],[124,661],[510,596],[385,665],[693,151],[789,305],[809,758]];
 function plant(u,v){return at(u,v,0,`${rect(-17,-9,34,25,'#e1cf9c','#77633e')}${rect(-12,-4,24,15,'#f4e4b9')}${rect(-3,-58,6,48,'#597945')}${rect(-19,-45,18,13,'#749552')}${rect(1,-60,19,13,'#86a65c')}${rect(-16,-71,16,15,'#90ad64')}${rect(3,-34,18,12,'#63884b')}`);}
 function chair(u,v){return at(u,v,0,`${rect(-4,-10,8,22,'#596b56')}${rect(-27,8,54,5,'#535e4b')}${rect(-3,10,6,10,'#535e4b')}${rect(-26,-57,52,47,'#315b49','#213d32')}${rect(-20,-50,40,31,'#50785d')}${rect(-27,-18,54,13,'#456c52','#284735',2)}`);}
 function table(u,v,w=150){return at(u,v,0,`${rect(4,-48,w*1.35,48,'#9e7950','#654e36')}${rect(0,-60,w*1.35,29,'#e4c99a','#715938')}${rect(12,-24,9,36,'#776044')}${rect(w*1.35-17,-24,9,36,'#776044')}`);}
@@ -96,7 +96,7 @@ function atriumRoom(){
  overlay+='<rect x="22" y="414" width="284" height="42" rx="9" fill="#f5edd7" stroke="#719a82" stroke-width="3"/>';
  overlay+='<text x="164" y="442" text-anchor="middle" font-size="20" font-weight="700" fill="#365d4c">1팀 · 조사·기획</text>';
  // Natural matching desk props replace the old planter/dog-house footprint.
- for(const [x,y] of [[50,573],[180,814]]){
+ for(const [x,y] of [[110,573],[205,814]]){
   overlay+='<g transform="translate('+x+' '+y+')"><rect x="-20" y="-35" width="176" height="49" rx="7" fill="url(#db-team-wood)" stroke="#896846" stroke-width="4"/><rect x="46" y="-92" width="63" height="56" rx="5" fill="#354e49" stroke="#263d37" stroke-width="4"/><rect x="53" y="-84" width="49" height="39" rx="3" fill="#86aea4"/><rect x="73" y="-35" width="8" height="20" fill="#5e6458"/><rect x="-11" y="13" width="13" height="53" fill="#866442"/><rect x="136" y="13" width="13" height="53" fill="#866442"/></g>';
  }
  // An executive-looking lower-right nook is now an ordinary 4th-team workroom.
