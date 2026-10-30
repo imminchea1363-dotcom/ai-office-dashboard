@@ -26,6 +26,7 @@
   });
  }
  function mediaCheck(entry){
+  if(entry.videoId)return '완성 영상 보관함 연결 · WebM/MP4 파일을 게시 전 직접 확인하고 플랫폼 규격에 맞게 업로드하세요.';
   if(entry.platform==='유튜브 쇼츠')return '세로 동영상 파일이 연결되지 않았습니다. 영상 제작·업로드 권한 확인 필요';
   if(entry.platform==='틱톡')return entry.hasPoster?'사진 게시에는 공식 API 권한과 검증된 공개 이미지 URL이 별도로 필요합니다. 영상 게시에는 동영상 파일이 필요합니다.':'사진 또는 동영상이 연결되지 않았습니다. 게시 방식과 API 권한을 확인하세요';
   if(entry.platform==='인스타그램')return entry.hasPoster?'로컬 포스터 PNG 있음 · 해당 플랫폼의 계정·게시 규격 검증 필요':'사진 또는 동영상 자료 연결 필요';
@@ -43,10 +44,10 @@
  const save=document.createElement('button');save.type='button';save.textContent='게시 초안 저장';save.id='db-sns-save';
  const info=document.createElement('p');info.id='db-sns-status';info.setAttribute('role','status');
  const origin=document.createElement('p');origin.id='db-sns-source';origin.textContent='연결된 직원 업무 없음';origin.style.cssText='font-size:12px;color:#657e70';
- let sourceJobId='';
+ let sourceJobId='',sourceVideoId='';
  const handle=document.createElement('div');handle.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:6px 0';
  const clear=document.createElement('button');clear.type='button';clear.id='db-sns-clear-source';clear.textContent='업무 연결 해제';
- clear.onclick=()=>{sourceJobId='';origin.textContent='연결된 직원 업무 없음';info.textContent='업무 연결을 해제했습니다.';};
+ clear.onclick=()=>{sourceJobId='';sourceVideoId='';origin.textContent='연결된 직원 업무 없음';info.textContent='업무·영상 연결을 해제했습니다.';};
  handle.append(clear);
  for(const n of [select,input,publishDate,caption])n.style.cssText='width:100%;box-sizing:border-box;min-width:0;padding:9px;font:inherit;font-size:13px;background:white;color:#243e37;border:1px solid #a7bba7;border-radius:7px';
  layout.append(select,input,publishDate,caption);section.append(origin,handle,layout,save,info);
@@ -96,6 +97,7 @@
    const card=el('article');card.dataset.snsId=entry.id;card.style.cssText='margin:12px 0;padding:12px;border:1px solid #c8d9c2;background:#fff;border-radius:9px';
    card.append(el('strong',entry.platform+' · '+entry.title),el('p','예정일: '+(entry.schedule||'미정')+' · 상태: '+entry.state));
    if(entry.sourceJobId)card.append(el('p','연결 업무: '+entry.sourceJobId.slice(0,18)+'…'));
+   if(entry.videoId)card.append(el('p','완성 영상 연결: '+entry.videoId.slice(0,18)+'… · 브라우저 보관함'));
    card.append(el('p','게시 전 확인: '+mediaCheck(entry)));
    card.append(el('p','계정 연결 상태: '+accounts[entry.platform]));
    card.append(reviewPanel(entry));
@@ -128,6 +130,18 @@
      info.textContent='로컬 PNG를 내려받았습니다. 플랫폼에서 직접 확인 후 게시하세요.';
     };actions.append(getPoster);
    }
+   if(entry.videoId){
+    const getVideo=el('button','연결된 영상 내려받기');getVideo.type='button';getVideo.dataset.snsVideo=entry.id;
+    getVideo.onclick=async()=>{
+     try{
+      const video=await window.DongbaegVideoLibrary?.get(entry.videoId);
+      if(!video)throw Error('연결된 영상이 현재 브라우저에 없습니다. 백업·복원을 확인하세요.');
+      const link=el('a'),url=URL.createObjectURL(video.blob);link.href=url;link.download='동백-SNS-'+entry.title.replace(/[\\/:*?"<>|]/g,'-')+'.'+video.format;
+      document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),20000);
+      info.textContent='완성 영상을 내려받았습니다. 플랫폼별 업로드 가능 여부를 확인하세요.';
+     }catch(error){info.textContent='영상 내려받기 실패: '+error.message;}
+    };actions.append(getVideo);
+   }
    const copy=el('button','본문 복사');copy.type='button';copy.dataset.snsCopy=entry.id;
    copy.onclick=async()=>{try{await navigator.clipboard.writeText(entry.caption);info.textContent='본문을 복사했습니다. 플랫폼에서 직접 확인 후 게시하세요.';}catch{info.textContent='복사가 제한됐습니다. 본문을 직접 선택해 복사하세요.';}};actions.append(copy);
    const remove=el('button','삭제');remove.type='button';remove.dataset.snsDelete=entry.id;
@@ -139,11 +153,24 @@
   const title=clean(input.value,100),body=clean(caption.value,3000);
   if(!title||!body){info.textContent='제목과 게시 본문을 입력하세요.';return;}
   if(entries.length>=limit){info.textContent='게시 계획이 250건입니다. 기존 계획을 정리해 주세요.';return;}
-  const source=sourceJobId;
+  const source=sourceJobId,videoId=sourceVideoId;
   const linked=source?await inspectPoster(source):null;
-  const item={id:crypto.randomUUID?.()||String(Date.now())+'-'+Math.random().toString(36).slice(2),platform:select.value,title,caption:body,schedule:clean(publishDate.value,30),sourceJobId:source,hasPoster:Boolean(linked),review:{},state:'초안',updated:Date.now()};
-  entries.unshift(item);if(put()){input.value='';caption.value='';sourceJobId='';origin.textContent='연결된 직원 업무 없음';info.textContent='게시 초안이 저장됐습니다. 대표 승인 전에는 게시하지 않습니다.';draw();}
+  const item={id:crypto.randomUUID?.()||String(Date.now())+'-'+Math.random().toString(36).slice(2),platform:select.value,title,caption:body,schedule:clean(publishDate.value,30),sourceJobId:source,videoId,hasPoster:Boolean(linked),review:{},state:'초안',updated:Date.now()};
+  entries.unshift(item);if(put()){input.value='';caption.value='';sourceJobId='';sourceVideoId='';origin.textContent='연결된 직원 업무 없음';info.textContent='게시 초안이 저장됐습니다. 대표 승인 전에는 게시하지 않습니다.';draw();}
  };
+ document.addEventListener('dongbaek-video-to-sns',async event=>{
+  const id=event.detail?.videoId;
+  if(typeof id!=='string'||id.length>110||!window.DongbaegVideoLibrary){info.textContent='영상 연결 요청이 올바르지 않습니다.';return;}
+  const video=await window.DongbaegVideoLibrary.get(id);
+  if(!video){info.textContent='영상 보관함에서 완성 파일을 찾지 못했습니다.';return;}
+  sourceVideoId=id;sourceJobId='';
+  input.value=clean(video.title,100);
+  caption.value=clean([video.title,video.subtitle,video.cta].filter(Boolean).join('\n'),3000);
+  select.value='인스타그램';
+  origin.textContent='완성 영상 연결: '+video.title+' · '+video.format.toUpperCase()+' · '+video.width+'×'+video.height;
+  info.textContent='영상이 SNS 초안과 연결됐습니다. 문안 수정·5개 항목 검수·대표 승인 후 직접 게시하세요.';
+  section.scrollIntoView({behavior:'smooth',block:'start'});
+ });
  document.addEventListener('dongbaek-office-to-sns',async event=>{
   const id=event.detail?.jobId;
   if(typeof id!=='string'||id.length>100)return;

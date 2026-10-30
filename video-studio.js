@@ -19,19 +19,24 @@
  for(const [value,name] of [['720','720×1280 · 권장'],['1080','1080×1920 · 고화질']]){const opt=n('option',name);opt.value=value;quality.append(opt);}
  label('출력 영상 해상도 (9:16)',quality);
  for(const input of [title,subtitle,cta,sources,format,quality])input.style.cssText='width:100%;box-sizing:border-box;min-width:0;background:white;color:#243e36;border:1px solid #b4c6b7;border-radius:7px;padding:8px;font-size:13px';
+ const cutEditor=n('div');cutEditor.id='db-video-cuts';cutEditor.style.cssText='display:grid;gap:8px;margin:9px 0';
  const preview=n('div');preview.id='db-video-preview';preview.style.cssText='display:flex;gap:7px;flex-wrap:wrap;margin:9px 0';
+ const cutNote=n('p','선택한 소스별 자막을 입력하고 위·아래 버튼으로 장면 순서를 바꿀 수 있습니다. 각 장면은 동일한 길이로 배분됩니다.');
+ cutNote.style.cssText='font-size:12px;color:#416557';
  const actions=n('div');actions.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin:9px 0';
  const render=n('button','15초 무음 영상 제작');render.type='button';render.id='db-video-render';render.style.cssText='padding:10px 15px;background:#326a53;color:white;border-radius:8px;border:0;font-weight:700';
  const cancel=n('button','제작 중단');cancel.type='button';cancel.id='db-video-cancel';cancel.disabled=true;
  const download=n('a','');download.id='db-video-download';download.hidden=true;download.textContent='완성 영상 다운로드';download.style.cssText='padding:10px 15px;background:#e9eedc;color:#24543e;border-radius:8px';
- actions.append(render,cancel,download);
+ const toSns=n('button','완성 영상을 SNS 초안으로 보내기');toSns.type='button';toSns.id='db-video-to-sns';toSns.disabled=true;toSns.style.cssText='padding:9px 12px;border-radius:8px;border:1px solid #8ba68c;background:#ecf2e5;color:#254936';
+ const saveLocal=n('button','완성 영상 보관함에 저장');saveLocal.type='button';saveLocal.id='db-video-save';saveLocal.disabled=true;
+ actions.append(render,cancel,download,saveLocal,toSns);
  const status=n('p','영상 소스를 업로드한 다음 시작하세요. WebM을 지원하지 않는 브라우저에서는 제작할 수 없습니다.');status.id='db-video-status';status.setAttribute('role','status');
  const canvas=n('canvas');canvas.id='db-video-canvas';canvas.width=720;canvas.height=1280;canvas.style.cssText='display:block;width:min(210px,100%);height:auto;border:1px solid #bfc8c0;border-radius:8px';
  const timeline=n('p','컷 구성: 0–2초 후킹 / 2–12초 시설·풍경 / 12–15초 예약 CTA');timeline.id='db-video-timeline';
  const playback=n('video');playback.id='db-video-playback';playback.controls=true;playback.playsInline=true;playback.hidden=true;playback.style.cssText='width:min(230px,100%);max-height:420px;margin:10px 0;border-radius:8px';
  const attribution=n('p','사진·동영상은 이 브라우저 안에서만 편집됩니다. 원본은 외부 AI 서버에 보내지 않으며, 제작된 영상은 직접 다운로드해야 보존됩니다.');
- root.append(form,timeline,preview,actions,status,canvas,playback,attribution);office.append(root);
- let selected=[],urls=[],run=null,finalUrl=null;
+ root.append(form,timeline,cutNote,cutEditor,preview,actions,status,canvas,playback,attribution);office.append(root);
+ let selected=[],urls=[],run=null,finalUrl=null,completedBlob=null,savedVideoId='',renderedCuts=[];
  const clean=(v,max)=>String(v||'').replace(/[\u0000-\u001f]/g,' ').trim().slice(0,max);
  const ctx=canvas.getContext('2d');
  const formats={mp4:['video/mp4;codecs=avc1.42E01E','video/mp4'],webm:['video/webm;codecs=vp8','video/webm']};
@@ -63,16 +68,41 @@
   const shade=ctx.createLinearGradient(0,0,0,640);shade.addColorStop(0,'rgba(0,20,24,.5)');shade.addColorStop(.48,'rgba(0,20,24,.04)');shade.addColorStop(1,'rgba(0,20,24,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,360,640);
   ctx.strokeStyle='rgba(255,255,255,.7)';ctx.lineWidth=1;ctx.strokeRect(18,18,324,604);
   if(sec<2)wrapped(title.value||'동백팬션에서 쉬어가요',65,31,3);
-  if(sec>=2&&sec<12)wrapped(subtitle.value||'바다를 바라보며 즐기는 휴식',455,24,3);
+  if(sec>=2&&sec<12)wrapped(asset?.caption||subtitle.value||'바다를 바라보며 즐기는 휴식',455,24,3);
   if(sec>=12){ctx.fillStyle='rgba(255,247,224,.96)';ctx.fillRect(20,496,320,100);ctx.fillStyle='#17463f';ctx.font='800 19px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillText('예약·상세 안내',180,529);ctx.fillStyle='#17463f';wrapped(cta.value||'네이버에서 포항 동백팬션 검색',552,19,2,'#17463f');}
   ctx.fillStyle='rgba(255,255,255,.85)';ctx.fillRect(20,610,320*Math.min(1,sec/15),4);
+ }
+ function updateTimeline(){
+  const duration=selected.length?(15/selected.length).toFixed(1):'—';
+  timeline.textContent='15초 영상 · '+selected.length+'컷 · 컷당 '+duration+'초 · 0~2초 후킹 · 12~15초 CTA';
+ }
+ function rebuildCuts(){
+  cutEditor.replaceChildren();updateTimeline();
+  selected.forEach((asset,i)=>{
+   const row=n('div');row.dataset.videoCut=String(i);row.style.cssText='display:flex;flex-wrap:wrap;align-items:center;gap:6px;border:1px solid #b5c7bb;padding:8px;border-radius:8px;background:#fff';
+   const header=n('strong',(i+1)+'번 장면 · '+asset.file.name.slice(0,55));header.style.cssText='font-size:12px;flex:1 1 160px';
+   const caption=n('input');caption.type='text';caption.dataset.videoCaption=String(i);caption.maxLength=70;caption.placeholder='이 장면의 자막 (선택)';caption.value=asset.caption||'';
+   caption.style.cssText='flex:2 1 180px;min-width:0;border:1px solid #aabcae;border-radius:5px;padding:8px;background:white;color:#28463e';
+   caption.oninput=()=>{asset.caption=caption.value;resetDownload();drawFrame(asset,3);};
+   const prev=n('button','↑');prev.type='button';prev.dataset.videoUp=String(i);prev.disabled=i===0;
+   const next=n('button','↓');next.type='button';next.dataset.videoDown=String(i);next.disabled=i===selected.length-1;
+   for(const b of [prev,next])b.style.cssText='padding:7px 12px;border:1px solid #a6b9a4;border-radius:5px;cursor:pointer';
+   prev.onclick=()=>moveCut(i,-1);next.onclick=()=>moveCut(i,1);
+   row.append(header,caption,prev,next);cutEditor.append(row);
+  });
+ }
+ function moveCut(index,delta){
+  if(run)return;
+  const target=index+delta;if(target<0||target>=selected.length)return;
+  [selected[index],selected[target]]=[selected[target],selected[index]];
+  resetDownload();rebuildCuts();drawFrame(selected[target],3);
  }
  function clear(){
   for(const u of urls)URL.revokeObjectURL(u);urls=[];
   selected.forEach(x=>{if(x.video){x.video.pause();x.video.removeAttribute('src');x.video.load();}});
-  selected=[];preview.replaceChildren();
+  selected=[];preview.replaceChildren();rebuildCuts();
  }
- function resetDownload(){download.hidden=true;playback.pause();playback.hidden=true;playback.removeAttribute('src');playback.load();if(finalUrl){URL.revokeObjectURL(finalUrl);finalUrl=null;}download.removeAttribute('href');}
+ function resetDownload(){completedBlob=null;savedVideoId='';saveLocal.disabled=true;toSns.disabled=true;download.hidden=true;playback.pause();playback.hidden=true;playback.removeAttribute('src');playback.load();if(finalUrl){URL.revokeObjectURL(finalUrl);finalUrl=null;}download.removeAttribute('href');}
  sources.onchange=async()=>{
   if(run){status.textContent='제작 중에는 소스를 바꿀 수 없습니다.';return;}
   clear();resetDownload();
@@ -86,6 +116,7 @@
    else{const video=n('video');video.src=url;video.muted=true;video.playsInline=true;video.preload='metadata';video.style.cssText='width:78px;height:105px;object-fit:cover';asset.video=video;const item=n('div');item.append(video,n('small',file.name));preview.append(item);}
    selected.push(asset);
   }
+  rebuildCuts();
   status.textContent=files.length+'개 실제 자료 선택 · 15초 무음 9:16 · 컷 길이는 자동 배분됩니다.';
   drawFrame(selected[0],0);
  };
@@ -115,7 +146,7 @@
   let recorder=null,stream=null,timer=null;
   try{
    await Promise.all(selected.map(prepareAsset));
-   const segments=selected.slice();const segmentSeconds=15/segments.length;
+   const segments=selected.slice();const segmentSeconds=15/segments.length;renderedCuts=segments.map(a=>({name:a.file.name,caption:a.caption||''}));
    stream=canvas.captureStream(20);
    const chunks=[];recorder=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:quality.value==='1080'?4500000:2400000});
    const result=new Promise((resolve,reject)=>{
@@ -141,11 +172,38 @@
     const signature=new Uint8Array(await blob.slice(0,16).arrayBuffer());
     if(!isRealVideo(signature,fileKind))throw Error('파일 헤더를 검증하지 못했습니다. 다운로드를 중단했습니다.');
     finalUrl=URL.createObjectURL(blob);download.href=finalUrl;download.download='동백팬션-15초-무음-숏폼.'+fileKind;download.hidden=false;
-    playback.src=finalUrl;playback.hidden=false;
+    completedBlob=blob;playback.src=finalUrl;playback.hidden=false;saveLocal.disabled=false;toSns.disabled=false;
     status.textContent='15초 '+canvas.width+'×'+canvas.height+' 무음 '+fileKind.toUpperCase()+' 완성 · '+(blob.size/1024/1024).toFixed(2)+'MB · 아래에서 미리 보고 게시 전 검수하세요.';
    }
   }catch(e){status.textContent='영상 제작 실패: '+(e.message||'원본 파일·브라우저 지원을 확인하세요.');}
   finally{if(timer)clearInterval(timer);if(recorder&&recorder.state!=='inactive'){try{recorder.stop();}catch{}}stream?.getTracks().forEach(track=>track.stop());selected.forEach(x=>x.video?.pause());run=null;render.disabled=false;cancel.disabled=true;sources.disabled=false;format.disabled=false;quality.disabled=false;}
+ };
+ async function persistVideo(){
+  if(!completedBlob)throw Error('먼저 영상을 완성해 주세요.');
+  const library=window.DongbaegVideoLibrary;
+  if(!library)throw Error('영상 보관함을 불러오지 못했습니다.');
+  if(savedVideoId){const existing=await library.get(savedVideoId);if(existing)return existing;}
+  const row=await library.save(completedBlob,{title:title.value||'동백팬션 15초 영상',subtitle:subtitle.value,cta:cta.value,
+   width:canvas.width,height:canvas.height,cuts:renderedCuts});
+  savedVideoId=row.id;
+  return row;
+ }
+ saveLocal.onclick=async()=>{
+  if(!completedBlob)return;
+  saveLocal.disabled=true;
+  try{const row=await persistVideo();status.textContent='영상 보관함 저장 완료 · '+row.id.slice(0,10)+'… · 전체 백업으로 다른 기기에 옮길 수 있습니다.';}
+  catch(error){status.textContent='영상 저장 실패: '+(error.message||'저장 공간을 확인하세요.');}
+  finally{saveLocal.disabled=false;}
+ };
+ toSns.onclick=async()=>{
+  if(!completedBlob)return;
+  toSns.disabled=true;
+  try{
+   const row=await persistVideo();
+   document.dispatchEvent(new CustomEvent('dongbaek-video-to-sns',{detail:{videoId:row.id,title:row.title,subtitle:row.subtitle,cta:row.cta}}));
+   status.textContent='완성 영상과 SNS 초안을 연결했습니다. 검수 후 대표 승인으로 진행하세요. 실제 SNS 게시가 실행된 것은 아닙니다.';
+  }catch(error){status.textContent='SNS 초안 연결 실패: '+(error.message||'영상 저장 공간을 확인하세요.');}
+  finally{toSns.disabled=false;}
  };
  drawFrame(null,0);
  updateSupport();
