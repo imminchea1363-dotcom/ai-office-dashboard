@@ -17,7 +17,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
    const dt=new DataTransfer();dt.items.add(photo);
    const input=document.getElementById('db-video-files');input.files=dt.files;input.dispatchEvent(new Event('change',{bubbles:true}));
   });
-  await page.waitForFunction(()=>document.querySelector('#db-video-status')?.textContent.includes('1개 자료 선택'));
+  await page.waitForFunction(()=>document.querySelector('#db-video-status')?.textContent.includes('1개 실제 자료 선택'));
   assert.equal(await page.locator('#db-video-preview img').count(),1);
   await page.fill('#db-video-title','우리만 아는 바다');
   await page.fill('#db-video-subtitle','반려견과 함께');
