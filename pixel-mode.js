@@ -8,7 +8,9 @@ const rect=(x,y,w,h,fill,stroke='',sw=3)=>`<rect x="${x}" y="${y}" width="${w}" 
 const label=(x,y,text,w=190)=>`<g transform="translate(${x} ${y})">${rect(-w/2,-13,w,28,'#fff2cb','#77633d',2)}<text y="6" text-anchor="middle" font-size="13" fill="#55472f">${E(text)}</text></g>`;
 // Staff seats share a coordinate system with the desks and four partitioned team zones.
 // 1: manager; 2/5: research; 3/6/7: video; 8/9: SNS; 4/10: review.
-const desks=[[500,20],[105,330],[502,330],[565,675],[265,330],[645,330],[770,330],[105,675],[265,675],[725,675]];
+// Seat anchors follow the preserved painted office: 1 manager, 2/5 research,
+// 3/6/7 video, 8/9 SNS, 4/10 quality. These do not draw new furniture.
+const desks=[[500,85],[270,54],[404,310],[759,554],[374,54],[533,316],[648,316],[733,91],[837,91],[848,554]];
 function plant(u,v){return at(u,v,0,`${rect(-17,-9,34,25,'#e1cf9c','#77633e')}${rect(-12,-4,24,15,'#f4e4b9')}${rect(-3,-58,6,48,'#597945')}${rect(-19,-45,18,13,'#749552')}${rect(1,-60,19,13,'#86a65c')}${rect(-16,-71,16,15,'#90ad64')}${rect(3,-34,18,12,'#63884b')}`);}
 function chair(u,v){return at(u,v,0,`${rect(-4,-10,8,22,'#596b56')}${rect(-27,8,54,5,'#535e4b')}${rect(-3,10,6,10,'#535e4b')}${rect(-26,-57,52,47,'#315b49','#213d32')}${rect(-20,-50,40,31,'#50785d')}${rect(-27,-18,54,13,'#456c52','#284735',2)}`);}
 function table(u,v,w=150){return at(u,v,0,`${rect(4,-48,w*1.35,48,'#9e7950','#654e36')}${rect(0,-60,w*1.35,29,'#e4c99a','#715938')}${rect(12,-24,9,36,'#776044')}${rect(w*1.35-17,-24,9,36,'#776044')}`);}
@@ -38,9 +40,25 @@ for(let x=155;x<1045;x+=222){s+=rect(x,91,204,100,'#263f36','#cfbb88',4)+rect(x+
 s+=rect(120,870,1112,26,'#5d715e','#313e32',3)+rect(120,884,1112,8,'#a4b9a0');
 return s+elevator()+label(670,57,'주식회사 동백 · PIXEL OFFICE',340);}
 function atriumRoom(){
- // Preserve the original painted office interior. The ten-person seating
- // expansion needs a separate artwork-aware layout review, not a flat SVG replacement.
- return `<image data-live-background="true" href="${window.DongbaekBackground||'assets/office-background.png'}" x="0" y="0" width="1350" height="975" preserveAspectRatio="none"/>`;
+ // Preserve the original illustrated interior, furniture and architecture.
+ const bg='<image data-live-background="true" href="' + (window.DongbaekBackground||'assets/office-background.png') + '" x="0" y="0" width="1350" height="975" preserveAspectRatio="none"/>';
+ const focus=document.getElementById('db-stage')?.dataset.teamFocus||'all';
+ const zones=[
+  {id:'research',x:425,y:90,w:250,h:232,color:'#4d8866',label:'1팀 · 조사·기획'},
+  {id:'video',x:485,y:335,w:555,h:325,color:'#8370b7',label:'2팀 · 영상·디자인'},
+  {id:'sns',x:1015,y:50,w:326,h:330,color:'#527da8',label:'3팀 · SNS 운영'},
+  {id:'quality',x:1065,y:515,w:274,h:419,color:'#a88153',label:'4팀 · 검수·성과'}
+ ];
+ let marks='<g id="db-team-zones" pointer-events="none">';
+ for(const z of zones){
+  const active=focus===z.id,muted=focus!=='all'&&!active;
+  marks+='<g data-team-zone="'+z.id+'" opacity="'+(muted?'.32':'1')+'">';
+  marks+='<rect x="'+z.x+'" y="'+z.y+'" width="'+z.w+'" height="'+z.h+'" rx="18" fill="'+z.color+'" fill-opacity="'+(active?'.15':'.035')+'" stroke="'+z.color+'" stroke-opacity="'+(active?'.95':'.63')+'" stroke-width="'+(active?'5':'3')+'" stroke-dasharray="10 9"/>';
+  marks+='<rect x="'+(z.x+8)+'" y="'+(z.y+8)+'" width="166" height="29" rx="9" fill="#fff9e9" fill-opacity=".95" stroke="'+z.color+'" stroke-width="1.5"/>';
+  marks+='<text x="'+(z.x+91)+'" y="'+(z.y+28)+'" text-anchor="middle" font-size="14" font-weight="700" fill="#354b43">'+z.label+'</text></g>';
+ }
+ marks+='<g data-team-zone="manager"><rect x="685" y="282" width="286" height="46" rx="12" fill="#fff9e8" fill-opacity=".93" stroke="#4c6f55" stroke-width="2"/><text x="828" y="309" text-anchor="middle" font-size="17" font-weight="700" fill="#3c5b48">총괄매니저 · 전 팀 업무관제</text></g></g>';
+ return bg+marks;
 }
 function legacyAtriumRoom(){
  let s=`<defs><pattern id="db-atrium-ash" width="150" height="48" patternUnits="userSpaceOnUse">${rect(0,0,150,48,'#cfab7c')}${rect(0,0,150,2,'#b68f61')}${rect(70,0,2,24,'#bd986b')}${rect(20,24,2,24,'#bd986b')}${rect(8,10,42,2,'#dfbd8c')}</pattern></defs>`;
