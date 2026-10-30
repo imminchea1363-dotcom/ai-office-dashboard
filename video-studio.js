@@ -1,32 +1,46 @@
-/* v11: Minchae's local 15-second short-form video editor.
-   Browser-only silent WebM export from real uploaded photos/clips; no external API/AI render. */
+/* Minchae local 15s short-form editor: real photos/clips only. Browser-native MP4 when supported, WebM otherwise; never mislabeled. */
 (()=>{
  'use strict';
  const office=document.querySelector('#db-ai-desk');if(!office)return;
  const n=(tag,text)=>{const x=document.createElement(tag);if(text!==undefined)x.textContent=text;return x;};
  const root=n('section');root.id='db-video-studio';root.style.cssText='border:1px solid #b4c7c1;background:#f5faf8;color:#203f37;padding:16px;border-radius:12px;margin:14px 0';
  root.append(n('h3','임민채 대리 · 영상 제작실'));
- root.append(n('p','실제 촬영 사진·영상 최대 5개로 15초 세로 무음 숏폼을 제작합니다. 브라우저가 지원하는 경우 WebM으로 내려받습니다. MP4·음악·자동 게시 기능은 아니며, 실제 영상 파일을 만들기 전에는 제작 완료라고 표시하지 않습니다.'));
+ root.append(n('p','실제 촬영 사진·영상 최대 5개로 15초 세로 무음 숏폼을 제작합니다. MP4 지원 여부는 브라우저마다 다르며, 지원하지 않으면 WebM으로 출력합니다. 상업음악·자동 게시·외부 AI 서버 전송은 하지 않습니다.'));
  const form=n('div');form.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:9px';
  const label=(title,input)=>{const l=n('label',title);l.style.cssText='font-size:13px;font-weight:700;display:grid;gap:5px';l.append(input);form.append(l);return l;};
  const sources=n('input');sources.type='file';sources.id='db-video-files';sources.multiple=true;sources.accept='image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime';label('실제 사진·영상 선택 (최대 5개)',sources);
  const title=n('input');title.id='db-video-title';title.maxLength=55;title.placeholder='첫 2초 후킹 문구';label('영상 첫 문구',title);
  const subtitle=n('input');subtitle.id='db-video-subtitle';subtitle.maxLength=70;subtitle.placeholder='평일 낮, 우리만 아는 바다';label('중간 안내 문구',subtitle);
  const cta=n('input');cta.id='db-video-cta';cta.maxLength=85;cta.value='네이버에서 ‘포항 동백팬션’ 검색';label('마지막 3초 CTA',cta);
- for(const input of [title,subtitle,cta,sources])input.style.cssText='width:100%;box-sizing:border-box;min-width:0;background:white;color:#243e36;border:1px solid #b4c6b7;border-radius:7px;padding:8px;font-size:13px';
+ const format=n('select');format.id='db-video-format';
+ for(const [value,name] of [['auto','자동 · MP4 우선'],['mp4','MP4 (지원 브라우저만)'],['webm','WebM']]){const opt=n('option',name);opt.value=value;format.append(opt);}
+ label('출력 파일 형식',format);
+ const quality=n('select');quality.id='db-video-quality';
+ for(const [value,name] of [['720','720×1280 · 권장'],['1080','1080×1920 · 고화질']]){const opt=n('option',name);opt.value=value;quality.append(opt);}
+ label('출력 영상 해상도 (9:16)',quality);
+ for(const input of [title,subtitle,cta,sources,format,quality])input.style.cssText='width:100%;box-sizing:border-box;min-width:0;background:white;color:#243e36;border:1px solid #b4c6b7;border-radius:7px;padding:8px;font-size:13px';
  const preview=n('div');preview.id='db-video-preview';preview.style.cssText='display:flex;gap:7px;flex-wrap:wrap;margin:9px 0';
  const actions=n('div');actions.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin:9px 0';
- const render=n('button','15초 무음 WebM 제작');render.type='button';render.id='db-video-render';render.style.cssText='padding:10px 15px;background:#326a53;color:white;border-radius:8px;border:0;font-weight:700';
+ const render=n('button','15초 무음 영상 제작');render.type='button';render.id='db-video-render';render.style.cssText='padding:10px 15px;background:#326a53;color:white;border-radius:8px;border:0;font-weight:700';
  const cancel=n('button','제작 중단');cancel.type='button';cancel.id='db-video-cancel';cancel.disabled=true;
  const download=n('a','');download.id='db-video-download';download.hidden=true;download.textContent='완성 영상 다운로드';download.style.cssText='padding:10px 15px;background:#e9eedc;color:#24543e;border-radius:8px';
  actions.append(render,cancel,download);
  const status=n('p','영상 소스를 업로드한 다음 시작하세요. WebM을 지원하지 않는 브라우저에서는 제작할 수 없습니다.');status.id='db-video-status';status.setAttribute('role','status');
- const canvas=n('canvas');canvas.id='db-video-canvas';canvas.width=360;canvas.height=640;canvas.style.cssText='display:block;width:min(210px,100%);height:auto;border:1px solid #bfc8c0;border-radius:8px';
+ const canvas=n('canvas');canvas.id='db-video-canvas';canvas.width=720;canvas.height=1280;canvas.style.cssText='display:block;width:min(210px,100%);height:auto;border:1px solid #bfc8c0;border-radius:8px';
+ const timeline=n('p','컷 구성: 0–2초 후킹 / 2–12초 시설·풍경 / 12–15초 예약 CTA');timeline.id='db-video-timeline';
+ const playback=n('video');playback.id='db-video-playback';playback.controls=true;playback.playsInline=true;playback.hidden=true;playback.style.cssText='display:block;width:min(230px,100%);max-height:420px;margin:10px 0;border-radius:8px';
  const attribution=n('p','사진·동영상은 이 브라우저 안에서만 편집됩니다. 원본은 외부 AI 서버에 보내지 않으며, 제작된 영상은 직접 다운로드해야 보존됩니다.');
- root.append(form,preview,actions,status,canvas,attribution);office.append(root);
+ root.append(form,timeline,preview,actions,status,canvas,playback,attribution);office.append(root);
  let selected=[],urls=[],run=null,finalUrl=null;
  const clean=(v,max)=>String(v||'').replace(/[\u0000-\u001f]/g,' ').trim().slice(0,max);
  const ctx=canvas.getContext('2d');
+ const formats={mp4:['video/mp4;codecs=avc1.42E01E','video/mp4'],webm:['video/webm;codecs=vp8','video/webm']};
+ function supported(type){return typeof MediaRecorder!=='undefined'&&MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(type);}
+ function chooseFormat(){const requested=format.value;const candidates=requested==='auto'?[...formats.mp4,...formats.webm]:formats[requested]||formats.webm;return candidates.find(supported)||null;}
+ function isRealVideo(bytes,kind){return kind==='mp4'?bytes.length>12&&String.fromCharCode(...bytes.subarray(4,8))==='ftyp':bytes.length>4&&bytes[0]===26&&bytes[1]===69&&bytes[2]===223&&bytes[3]===163;}
+ function updateSupport(){const canMp4=formats.mp4.some(supported);format.querySelector('option[value=mp4]').disabled=!canMp4;format.title=canMp4?'브라우저가 MP4 녹화를 지원합니다.':'이 브라우저는 MP4 녹화를 지원하지 않습니다.';status.textContent=canMp4?'MP4 녹화 지원 브라우저 · 기본값은 자동 선택입니다.':'MP4 인코딩 미지원 브라우저 · WebM 출력은 가능합니다. MP4 파일은 별도 변환이 필요합니다.';}
+ format.onchange=()=>{if(run)return;resetDownload();updateSupport();if(format.value==='mp4'&&!formats.mp4.some(supported))status.textContent='이 브라우저는 MP4를 제작할 수 없습니다. 자동 또는 WebM을 선택하세요.';};
+ quality.onchange=()=>{if(run)return;resetDownload();canvas.width=Number(quality.value);canvas.height=Number(quality.value)*16/9;drawFrame(selected[0],0);};
  function cover(source){
   const sw=source.videoWidth||source.naturalWidth||source.width,sh=source.videoHeight||source.naturalHeight||source.height;
   if(!sw||!sh)return;
@@ -42,6 +56,7 @@
   for(const text of lines){ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=7;ctx.fillText(text,180,y,320);ctx.shadowBlur=0;y+=size*1.24;}
  }
  function drawFrame(asset,sec){
+  ctx.setTransform(canvas.width/360,0,0,canvas.height/640,0,0);
   ctx.fillStyle='#163f47';ctx.fillRect(0,0,360,640);
   if(asset?.image&&asset.image.complete&&asset.image.naturalWidth)cover(asset.image);
   if(asset?.video&&asset.video.readyState>=2)cover(asset.video);
@@ -57,7 +72,7 @@
   selected.forEach(x=>{if(x.video){x.video.pause();x.video.removeAttribute('src');x.video.load();}});
   selected=[];preview.replaceChildren();
  }
- function resetDownload(){download.hidden=true;if(finalUrl){URL.revokeObjectURL(finalUrl);finalUrl=null;}download.removeAttribute('href');}
+ function resetDownload(){download.hidden=true;playback.pause();playback.hidden=true;playback.removeAttribute('src');playback.load();if(finalUrl){URL.revokeObjectURL(finalUrl);finalUrl=null;}download.removeAttribute('href');}
  sources.onchange=async()=>{
   if(run){status.textContent='제작 중에는 소스를 바꿀 수 없습니다.';return;}
   clear();resetDownload();
@@ -71,7 +86,7 @@
    else{const video=n('video');video.src=url;video.muted=true;video.playsInline=true;video.preload='metadata';video.style.cssText='width:78px;height:105px;object-fit:cover';asset.video=video;const item=n('div');item.append(video,n('small',file.name));preview.append(item);}
    selected.push(asset);
   }
-  status.textContent=files.length+'개 자료 선택 · 15초 9:16, 무음 WebM · 컷별 길이는 자동 배분됩니다.';
+  status.textContent=files.length+'개 실제 자료 선택 · 15초 무음 9:16 · 컷 길이는 자동 배분됩니다.';
   drawFrame(selected[0],0);
  };
  async function prepareAsset(asset){
@@ -92,28 +107,29 @@
  render.onclick=async()=>{
   if(run)return;
   if(!selected.length){status.textContent='최소 한 개의 사진 또는 영상이 필요합니다.';return;}
-  if(!canvas.captureStream||typeof MediaRecorder==='undefined'){status.textContent='현재 브라우저에서는 WebM 영상 제작을 지원하지 않습니다. 크롬 최신 버전을 사용하세요.';return;}
-  const type=['video/webm;codecs=vp8','video/webm'].find(x=>MediaRecorder.isTypeSupported(x));
-  if(!type){status.textContent='WebM 인코딩이 지원되지 않습니다. 최신 Chrome에서 실행하세요.';return;}
-  const state={cancelled:false};run=state;render.disabled=true;cancel.disabled=false;sources.disabled=true;resetDownload();
+  if(!canvas.captureStream||typeof MediaRecorder==='undefined'){status.textContent='이 브라우저에서는 영상 제작을 지원하지 않습니다. 최신 Chrome을 사용하세요.';return;}
+  const type=chooseFormat();
+  if(!type){status.textContent=format.value==='mp4'?'MP4 출력 미지원 브라우저입니다. 자동 또는 WebM을 선택하세요.':'지원되는 영상 인코더가 없습니다. 브라우저를 확인하세요.';return;}
+  const fileKind=type.startsWith('video/mp4')?'mp4':'webm';
+  const state={cancelled:false};run=state;render.disabled=true;cancel.disabled=false;sources.disabled=true;format.disabled=true;quality.disabled=true;resetDownload();
   let recorder=null,stream=null,timer=null;
   try{
    await Promise.all(selected.map(prepareAsset));
    const segments=selected.slice();const segmentSeconds=15/segments.length;
    stream=canvas.captureStream(20);
-   const chunks=[];recorder=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:950000});
+   const chunks=[];recorder=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:quality.value==='1080'?4500000:2400000});
    const result=new Promise((resolve,reject)=>{
     recorder.ondataavailable=event=>{if(event.data.size)chunks.push(event.data);};
     recorder.onerror=e=>reject(e.error||Error('영상 인코딩 실패'));
-    recorder.onstop=()=>resolve(new Blob(chunks,{type:'video/webm'}));
+    recorder.onstop=()=>resolve(new Blob(chunks,{type:fileKind==='mp4'?'video/mp4':'video/webm'}));
    });
-   let step=0,active=null,previous=performance.now();const started=performance.now();
+   let step=0,active=null;const started=performance.now();
    const tick=()=>{
     if(run!==state)return;
     const elapsed=Math.min(15,(performance.now()-started)/1000),index=Math.min(segments.length-1,Math.floor(elapsed/segmentSeconds));
     if(index!==step||!active){active?.video?.pause();active=segments[index];step=index;if(active.video){active.video.currentTime=0;active.video.play().catch(()=>{});}}
     drawFrame(active,elapsed);
-    status.textContent='무음 WebM 제작 중 · '+Math.floor(elapsed)+'/15초'+(state.cancelled?' · 중단 요청됨':'');
+    status.textContent='무음 '+fileKind.toUpperCase()+' 제작 중 · '+Math.floor(elapsed)+'/15초'+(state.cancelled?' · 중단 요청됨':'');
     if(elapsed>=15||state.cancelled){clearInterval(timer);timer=null;recorder.stop();}
    };
    drawFrame(segments[0],0);
@@ -121,9 +137,16 @@
    const blob=await result;
    if(state.cancelled){status.textContent='영상 제작을 취소했습니다. 저장된 파일은 없습니다.';}
    else if(blob.size<1000){status.textContent='파일 인코딩이 완료되지 않았습니다. 브라우저 호환성을 확인하세요.';}
-   else{finalUrl=URL.createObjectURL(blob);download.href=finalUrl;download.download='동백팬션-15초-무음-숏폼.webm';download.hidden=false;status.textContent='15초 무음 WebM 완성 · '+(blob.size/1024/1024).toFixed(2)+'MB · 음악·실제 게시 여부는 별도 검토하세요.';}
+   else{
+    const signature=new Uint8Array(await blob.slice(0,16).arrayBuffer());
+    if(!isRealVideo(signature,fileKind))throw Error('파일 헤더를 검증하지 못했습니다. 다운로드를 중단했습니다.');
+    finalUrl=URL.createObjectURL(blob);download.href=finalUrl;download.download='동백팬션-15초-무음-숏폼.'+fileKind;download.hidden=false;
+    playback.src=finalUrl;playback.hidden=false;
+    status.textContent='15초 '+canvas.width+'×'+canvas.height+' 무음 '+fileKind.toUpperCase()+' 완성 · '+(blob.size/1024/1024).toFixed(2)+'MB · 아래에서 미리 보고 게시 전 검수하세요.';
+   }
   }catch(e){status.textContent='영상 제작 실패: '+(e.message||'원본 파일·브라우저 지원을 확인하세요.');}
-  finally{if(timer)clearInterval(timer);if(recorder&&recorder.state!=='inactive'){try{recorder.stop();}catch{}}stream?.getTracks().forEach(track=>track.stop());selected.forEach(x=>x.video?.pause());run=null;render.disabled=false;cancel.disabled=true;sources.disabled=false;}
+  finally{if(timer)clearInterval(timer);if(recorder&&recorder.state!=='inactive'){try{recorder.stop();}catch{}}stream?.getTracks().forEach(track=>track.stop());selected.forEach(x=>x.video?.pause());run=null;render.disabled=false;cancel.disabled=true;sources.disabled=false;format.disabled=false;quality.disabled=false;}
  };
  drawFrame(null,0);
+ updateSupport();
 })();
