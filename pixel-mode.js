@@ -38,46 +38,9 @@ for(let x=155;x<1045;x+=222){s+=rect(x,91,204,100,'#263f36','#cfbb88',4)+rect(x+
 s+=rect(120,870,1112,26,'#5d715e','#313e32',3)+rect(120,884,1112,8,'#a4b9a0');
 return s+elevator()+label(670,57,'주식회사 동백 · PIXEL OFFICE',340);}
 function atriumRoom(){
- // A ten-seat workspace: manager outside all teams, four distinct team rooms,
- // clear central passage and visual partitions. All geometry uses 1350x975 SVG units.
- let scene='<rect width="1350" height="975" fill="#e7dfce"/>';
- scene+='<rect x="40" y="36" width="1270" height="897" rx="24" fill="#faf6eb" stroke="#a99476" stroke-width="7"/>';
- scene+='<text x="675" y="79" text-anchor="middle" font-size="21" font-weight="700" fill="#355a49">주식회사 동백 · AI 팀별 작업실</text>';
- const zones=[
-  {id:'manager',x:74,y:96,w:1202,h:223,fill:'#e4eee3',edge:'#8dab92',title:'총괄매니저 · 업무분장 및 종합보고',subtitle:'GPT · 팀 전체 관제'},
-  {id:'research',x:74,y:338,w:534,h:260,fill:'#e9f1e2',edge:'#a2ba91',title:'1팀 · 조사·기획',subtitle:'Gemini · GPT / 2명'},
-  {id:'video',x:628,y:338,w:648,h:260,fill:'#eee7f1',edge:'#b6a1c6',title:'2팀 · 영상·디자인',subtitle:'Runway · Higgsfield · 편집 / 3명'},
-  {id:'sns',x:74,y:616,w:534,h:278,fill:'#e6eef7',edge:'#92adcd',title:'3팀 · SNS 운영',subtitle:'GPT · Claude / 2명'},
-  {id:'review',x:628,y:616,w:648,h:278,fill:'#f5eadc',edge:'#c7ae90',title:'4팀 · 검수·성과',subtitle:'Nemotron · GPT / 2명'}
- ];
- for(const z of zones){
-  scene+='<g data-team-zone="'+z.id+'"><rect x="'+z.x+'" y="'+z.y+'" width="'+z.w+'" height="'+z.h+'" rx="15" fill="'+z.fill+'" stroke="'+z.edge+'" stroke-width="4"/>';
-  scene+='<path d="M'+(z.x+18)+' '+(z.y+61)+'H'+(z.x+z.w-18)+'" stroke="'+z.edge+'" stroke-width="2" stroke-dasharray="8 6"/>';
-  if(z.id==='manager'){
-   scene+='<text x="135" y="184" font-size="23" font-weight="700" fill="#315b48">'+z.title+'</text>';
-   scene+='<text x="136" y="217" font-size="17" fill="#587766">'+z.subtitle+'</text>';
-   scene+='<text x="136" y="254" font-size="14" fill="#587766">팀 배정 → 진행 점검 → 결과 취합 → 대표 보고</text>';
-  }else{
-   scene+='<text x="'+(z.x+20)+'" y="'+(z.y+30)+'" font-size="21" font-weight="700" fill="#3d514a">'+z.title+'</text>';
-   scene+='<text x="'+(z.x+20)+'" y="'+(z.y+53)+'" font-size="14" fill="#66786e">'+z.subtitle+'</text>';
-  }
-  scene+='</g>';
- }
- // Narrow but explicit aisles; the two team halves are separated by room borders.
- scene+='<rect x="608" y="338" width="20" height="556" fill="#e0d5c1" opacity=".55"/>';
- scene+='<rect x="74" y="597" width="1202" height="19" fill="#e0d5c1" opacity=".55"/>';
- for(let i=0;i<desks.length;i++){
-  const [u,v]=desks[i],[x,y]=project(u,v,0),manager=i===0;
-  scene+='<g data-office-desk="'+(i+1)+'" transform="translate('+x+' '+(y-23)+')">';
-  scene+='<ellipse cy="15" rx="76" ry="17" fill="#73614b" opacity=".12"/>';
-  scene+='<rect x="-57" y="-23" width="114" height="26" rx="6" fill="'+(manager?'#dbc18f':'#d2b995')+'" stroke="#917858" stroke-width="2"/>';
-  scene+='<rect x="-26" y="-67" width="52" height="42" rx="4" fill="#2f5048" stroke="#253c35" stroke-width="2"/>';
-  scene+='<rect x="-20" y="-61" width="40" height="28" rx="2" fill="'+(['#8fb49e','#87a4c4','#b6a2c3'][i%3])+'"/>';
-  scene+='<rect x="-7" y="-25" width="14" height="7" fill="#466254"/>';
-  scene+='<rect x="-45" y="3" width="10" height="14" fill="#987f64"/><rect x="35" y="3" width="10" height="14" fill="#987f64"/>';
-  scene+='</g>';
- }
- return scene;
+ // Preserve the original painted office interior. The ten-person seating
+ // expansion needs a separate artwork-aware layout review, not a flat SVG replacement.
+ return `<image data-live-background="true" href="${window.DongbaekBackground||'assets/office-background.png'}" x="0" y="0" width="1350" height="975" preserveAspectRatio="none"/>`;
 }
 function legacyAtriumRoom(){
  let s=`<defs><pattern id="db-atrium-ash" width="150" height="48" patternUnits="userSpaceOnUse">${rect(0,0,150,48,'#cfab7c')}${rect(0,0,150,2,'#b68f61')}${rect(70,0,2,24,'#bd986b')}${rect(20,24,2,24,'#bd986b')}${rect(8,10,42,2,'#dfbd8c')}</pattern></defs>`;
