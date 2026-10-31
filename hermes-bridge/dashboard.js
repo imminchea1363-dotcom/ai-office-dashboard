@@ -32,7 +32,7 @@ for(const k of ['pending','approved','rejected','stale','blocked'])if(!Number.is
 function render(data,origin,age){verify(data);last=data;roster.replaceChildren();
 for(const w of data.workers){const item=el('div');item.style.cssText='padding:5px 0;border-bottom:1px solid #e8eee5';
 const head=el('strong',NAMES[Number(w.id.substring(5))-1]+' · '+LABEL[w.state]);
-const sub=el('div',`승인 대기 ${w.pending} / 승인 기록 ${w.approved} / 수정·차단 ${w.stale+w.blocked}`);sub.style.cssText='font-size:11px;color:#657866';
+const sub=el('div',`승인 대기 ${w.pending} / 승인 기록 ${w.approved} / 무효·차단 이력 ${w.stale+w.blocked}`);sub.style.cssText='font-size:11px;color:#657866';
 item.append(head,sub);roster.append(item);}
 status.textContent=origin+' · '+new Date(data.captured_at*1000).toLocaleString('ko-KR')+(age===undefined?'':` · ${age}초 전`);
 }
