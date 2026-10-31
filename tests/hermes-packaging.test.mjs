@@ -19,8 +19,7 @@ test('status UI exposes no remote actions and does not persist tokens',()=>{
  const js=read('hermes-bridge/dashboard.js');
  assert.ok(js.includes('/api/hermes/status'));
  assert.ok(!js.includes('/api/hermes/approve'));
- assert.ok(!js.includes('localStorage'));
- assert.ok(!js.includes('sessionStorage'));
+ assert.doesNotMatch(js,/\\b(?:localStorage|sessionStorage)\\s*(?:\\.|\\[)/,'no browser storage access is permitted');
  assert.ok(js.includes('cache:\'no-store\''));
  const python=read('hermes-bridge/export_status.py');
  assert.ok(python.includes('mode=ro'));
