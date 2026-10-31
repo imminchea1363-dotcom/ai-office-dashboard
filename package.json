@@ -5,7 +5,7 @@
   "description": "AI 사무실 시뮬레이션 대시보드",
   "scripts": {
     "start": "python3 -m http.server 3000 --bind 0.0.0.0",
-    "check": "node --check team10-state.js && node --check team10-live-board.js && node --check v3.js && node --check pixel-mode.js && node --check pwa.js && node --check sw.js && node --check radio.js && node --check characters.js && node --check gym-music.js && node --check docx-export.js && node --check ai-desk.js && node --check poster-studio.js && node --check office-manual.js && node --check office-archive.js && node --check gpt-desk.js && node --check server/worker.mjs && node --check server/hermes-queue.mjs",
+    "check": "node --check team10-state.js && node --check team10-live-board.js && node --check hermes-bridge-ui.js && node --check v3.js && node --check pixel-mode.js && node --check pwa.js && node --check sw.js && node --check radio.js && node --check characters.js && node --check gym-music.js && node --check docx-export.js && node --check ai-desk.js && node --check poster-studio.js && node --check office-manual.js && node --check office-archive.js && node --check gpt-desk.js && node --check server/worker.mjs && node --check server/hermes-queue.mjs",
     "export": "python3 scripts/export-standalone.py",
     "test:browser": "node tests/smoke.cjs",
     "build:pwa": "python3 scripts/build-pwa.py",
