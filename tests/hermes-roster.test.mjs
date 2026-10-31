@@ -35,7 +35,10 @@ test('real Hermes approval counts attach only to verified numeric office identit
   addEventListener(name,cb){events[name]=cb}
  };
  const js=readFileSync(new URL('../hermes-bridge/dashboard.js',import.meta.url),'utf8');
- vm.runInNewContext(js,{document:doc,window:browser,URL,AbortSignal,fetch(){throw Error('no network allowed')},structuredClone});
+ let liveSnapshot=snapshot(),called=null;
+ vm.runInNewContext(js,{document:doc,window:browser,URL,AbortSignal,
+  fetch:async(url,options)=>{called={url,options};return {ok:true,json:async()=>({connected:true,snapshot:liveSnapshot,age_seconds:2})};},
+  setInterval:()=>42,clearInterval:()=>{},structuredClone});
  const input=nodes.find(n=>n.tag==='input'&&n.type==='file');
  assert.ok(input,'manual status import must exist');
  input.files=[{size:2000,text:async()=>JSON.stringify(snapshot())}];
@@ -51,4 +54,21 @@ test('real Hermes approval counts attach only to verified numeric office identit
  events['dongbaek-scene']();
  assert.equal(roster.querySelectorAll('[data-hermes-note]').length,5,'scene redraw must not duplicate badges');
  assert.equal(browser.DongbaegHermesBridge.connected(),false,'manual import is not automatic sync');
+ const address=nodes.find(x=>x.tag==='input'&&x.type==='url');
+ const password=nodes.find(x=>x.tag==='input'&&x.type==='password');
+ const connect=nodes.find(x=>x.tag==='button'&&x.textContent==='자동 상태 조회');
+ const disconnect=nodes.find(x=>x.tag==='button'&&x.textContent==='연결 끊기');
+ assert.ok(address&&password&&connect&&disconnect);
+ address.value='https://bridge.example/api/hermes/status';
+ password.value='r'.repeat(40);
+ liveSnapshot=snapshot();liveSnapshot.workers[2].pending=1;liveSnapshot.workers[2].state='approval_pending';
+ connect.events.click();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(called.url,'https://bridge.example/api/hermes/status');
+ assert.equal(called.options.headers.Authorization,'Bearer '+'r'.repeat(40));
+ assert.match(notes(3),/Hermes 실제 승인 대기 1건/);
+ assert.equal(browser.DongbaegHermesBridge.connected(),true);
+ disconnect.events.click();
+ assert.equal(browser.DongbaegHermesBridge.connected(),false);
+ assert.doesNotMatch(notes(3),/실제 승인 대기/,'offline badges must not claim live status');
 });
