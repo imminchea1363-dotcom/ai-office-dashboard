@@ -48,6 +48,28 @@ const hermesPassword = 'mock-only-hermes-agent-password-32-characters';
   assert.equal((await r.json()).result,'대표 검수 대기 초안');
   assert.equal(calls,1,'Hermes queue must not trigger OpenAI generation');
   console.log('PASS Hermes actual workerd D1 mailbox: one-shot claim, agent result, authenticated recovery, no GPT billing');
+  const phoneTask={id:crypto.randomUUID(),staffId:9,title:'1호에서 업무 전달',brief:'SNS 초안 제작 의뢰',output:'검수용 초안'};
+  r=await runtime.dispatchFetch('https://worker.test/api/phone1/agent/dispatch',{
+   method:'POST',headers:agentHeaders,body:JSON.stringify(phoneTask)
+  });
+  assert.equal(r.status,201);
+  r=await runtime.dispatchFetch('https://worker.test/api/phone1/inbox',{headers});
+  const inbox=await r.json();
+  assert.equal(inbox.tasks.length,1);
+  assert.equal(inbox.tasks[0].staffId,9);
+  r=await runtime.dispatchFetch('https://worker.test/api/phone1/inbox/result',{
+   method:'POST',headers,
+   body:JSON.stringify({id:phoneTask.id,status:'draft_ready',result:'1호 요청을 받은 사무실 초안'})
+  });
+  assert.equal(r.status,200);
+  assert.equal((await r.json()).reviewStatus,'pending');
+  r=await runtime.dispatchFetch('https://worker.test/api/phone1/agent/status?id='+phoneTask.id,{headers:agentHeaders});
+  const phoneStatus=await r.json();
+  assert.equal(phoneStatus.result,'1호 요청을 받은 사무실 초안');
+  assert.equal(phoneStatus.reviewStatus,'pending');
+  assert.equal(calls,1,'Phone1 dispatch must not trigger extra GPT calls');
+  console.log('PASS phone1 -> office -> phone1 actual workerd D1 round trip without extra GPT calls');
+
   console.log('PASS actual Cloudflare workerd: D1 schema, authentication, single mocked Responses request and result recovery');
  }finally{await runtime.dispose();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
