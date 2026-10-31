@@ -81,8 +81,8 @@ export default {
   const url = new URL(request.url), origin = request.headers.get('Origin') || '';
   if (request.method === 'GET' && url.pathname === '/health') return json({ service: 'dongbaek-gpt', version: 2, ready: Boolean(configured(env)) }, 200, origin);
   if (isHermesAgentPath(url.pathname)) return handleHermesQueue(request,env);
-  if (isPhoneAgentPath(url.pathname)) return handlePhone1Inbox(request,env);
   if (isPhone1PresenceAgentPath(url.pathname)) return handlePhone1Presence(request,env);
+  if (isPhoneAgentPath(url.pathname)) return handlePhone1Inbox(request,env);
   if (origin !== ORIGIN) return json({ error: 'origin_denied', message: '동백사무실에서 접속해 주세요.' }, 403);
   if (request.method === 'OPTIONS') {
    return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': ORIGIN, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '600', Vary: 'Origin' } });
