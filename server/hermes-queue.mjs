@@ -15,7 +15,7 @@ const answer=(data,status=200,origin='')=>{
  return new Response(JSON.stringify(data),{status,headers});
 };
 const secretValid=token=>typeof token==='string'&&token.length>=32&&token.length<=256&&/^[!-~]+$/.test(token);
-const configured=env=>Boolean(env?.DB?.prepare&&secretValid(env.OFFICE_ACCESS_TOKEN)&&secretValid(env.HERMES_AGENT_TOKEN)&&env.OFFICE_ACCESS_TOKEN!==env.HERMES_AGENT_TOKEN);
+const configured=env=>Boolean(env?.DB?.prepare&&typeof env.OFFICE_ACCESS_TOKEN==='string'&&env.OFFICE_ACCESS_TOKEN.length>=20&&env.OFFICE_ACCESS_TOKEN.length<=256&&/^[!-~]+$/.test(env.OFFICE_ACCESS_TOKEN)&&secretValid(env.HERMES_AGENT_TOKEN)&&env.OFFICE_ACCESS_TOKEN!==env.HERMES_AGENT_TOKEN);
 async function sha(value){return new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)));}
 async function authentication(request,secret){
  const bearer=request.headers.get('Authorization')||'';
