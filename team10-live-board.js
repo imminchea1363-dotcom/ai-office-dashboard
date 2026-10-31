@@ -14,8 +14,9 @@
   const explanation=document.createElement('p');
   explanation.textContent='업무 기록과 GPT 단계 진행 상태를 보여줍니다. 수동 서비스는 지시문을 복사했다고 실제 AI 작업이 실행된 것은 아닙니다. 직원 이동 화면은 시뮬레이션입니다.';
   const stats=document.createElement('p');stats.id='db-team10-stats';stats.setAttribute('role','status');
+  const providers=document.createElement('p');providers.id='db-ai-provider-status';providers.textContent='AI 실행 연결: 서버 인증 및 각 서비스 설정 확인 전';
   const cards=document.createElement('div');cards.id='db-team10-cards';
-  panel.append(heading,explanation,stats,cards);
+  panel.append(heading,explanation,stats,providers,cards);
   section.querySelector('#db-ai-jobs').before(panel);
   const style=document.createElement('style');
   style.textContent=`
@@ -39,7 +40,7 @@
     ready:'결과 기록됨 · 보고 대기',copied:'지시문 복사됨 · 외부 실행 확인 필요',
     prepared:'업무 준비됨 · 외부 실행 전',failed:'GPT 실행 중단',reported:'대표 보고 접수'
   };
-  let managerStage=null,hermesJobs=[],phone1Jobs=[];
+  let managerStage=null,hermesJobs=[],phone1Jobs=[],aiProviders=null;
   const phone1For=id=>phone1Jobs.find(j=>j.staffId===id&&j.status==='queued')||phone1Jobs.find(j=>j.staffId===id);
   const phone1Labels={queued:'1호 업무 지시 접수 · 실행 전',draft_ready:'1호에 초안 회신 · 검수 필요',failed:'1호 업무 실패 · 확인 필요'};
   const hermesFor=id=>hermesJobs.find(j=>j.staffId===id&&j.status!=='failed')||hermesJobs.find(j=>j.staffId===id);
@@ -74,7 +75,7 @@
       else if(phone1For(person.id))card.append(el('span',phone1For(person.id).title+' · 1호 휴대폰 지시','db-t10-title'));
       else if(hermesFor(person.id))card.append(el('span',hermesFor(person.id).title+' · Hermes 업무 기록','db-t10-title'));
       else if(job){
-        const kind=job.gpt?'GPT 자동 요청 기록':'수동 도구 업무 기록';
+        const kind=job.gpt?(job.service+' API 실행 기록'):'수동 도구 업무 기록';
         card.append(el('span',job.title+' · '+kind,'db-t10-title'));
       }else card.append(el('span',person.job,'db-t10-title'));
       const button=el('button','업무 배정');button.type='button';
@@ -91,6 +92,16 @@
       card.append(button);cards.append(card);
     }
   }
+  document.addEventListener('dongbaek-ai-providers',event=>{
+    aiProviders=event.detail?.providers||null;
+    const entries=aiProviders?Object.entries(aiProviders):[];
+    providers.textContent='AI 실행 연결: '+(entries.length?entries.map(([id,item])=>id+' '+(item.configured?'서버 키 등록 (실행 미검증)':'미설정')).join(' / '):'연결 상태 확인 전');
+  });
+  document.addEventListener('dongbaek-ai-execution-success',event=>{
+    const id=event.detail?.provider;
+    if(!id||!aiProviders?.[id])return;
+    providers.textContent=providers.textContent.replace(id+' 서버 키 등록 (실행 미검증)',id+' 실제 응답 수신 확인');
+  });
   document.addEventListener('dongbaek-ai-jobs',render);
   document.addEventListener('dongbaek-hermes-queue',event=>{
     const items=event.detail?.jobs;
