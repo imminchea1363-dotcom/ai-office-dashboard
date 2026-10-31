@@ -39,7 +39,9 @@
     ready:'결과 기록됨 · 보고 대기',copied:'지시문 복사됨 · 외부 실행 확인 필요',
     prepared:'업무 준비됨 · 외부 실행 전',failed:'GPT 실행 중단',reported:'대표 보고 접수'
   };
-  let managerStage=null,hermesJobs=[];
+  let managerStage=null,hermesJobs=[],phone1Jobs=[];
+  const phone1For=id=>phone1Jobs.find(j=>j.staffId===id&&j.status==='queued')||phone1Jobs.find(j=>j.staffId===id);
+  const phone1Labels={queued:'1호 업무 지시 접수 · 실행 전',draft_ready:'1호에 초안 회신 · 검수 필요',failed:'1호 업무 실패 · 확인 필요'};
   const hermesFor=id=>hermesJobs.find(j=>j.staffId===id&&j.status!=='failed')||hermesJobs.find(j=>j.staffId===id);
   const hermesLabels={queued:'Hermes 업무 접수 · 실행 전',claimed:'Hermes 업무 수신됨 · 결과 대기',completed:'Hermes 초안 도착 · 검수 필요',failed:'Hermes 실행 실패 · 확인 필요','전송 확인 필요':'Hermes 접수 여부 확인 필요'};
   const el=(tag,text,className)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=String(text);if(className)node.className=className;return node;};
@@ -49,6 +51,8 @@
   const labelFor=(p,job)=>{
     if(managerStage?.workerId===p.id && managerStage.status==='running')return '자동 GPT 단계 진행 중';
     if(managerStage?.workerId===p.id && managerStage.status==='paused')return 'GPT 단계 결과 확인 필요';
+    const phone1=phone1For(p.id);
+    if(phone1)return phone1Labels[phone1.status]||'1호 지시 상태 확인 필요';
     const hermes=hermesFor(p.id);
     if(hermes)return hermesLabels[hermes.status]||'Hermes 상태 확인 필요';
     if(!job)return '배정된 업무 없음';
@@ -67,6 +71,7 @@
       card.append(el('small',teamNames[person.team]),el('strong',person.name),el('span',labelFor(person,job),'db-t10-status'));
       if(managerStage?.workerId===person.id&&['running','paused'].includes(managerStage.status))
         card.append(el('span',managerStage.title||'GPT 자동 분장','db-t10-title'));
+      else if(phone1For(person.id))card.append(el('span',phone1For(person.id).title+' · 1호 휴대폰 지시','db-t10-title'));
       else if(hermesFor(person.id))card.append(el('span',hermesFor(person.id).title+' · Hermes 업무 기록','db-t10-title'));
       else if(job){
         const kind=job.gpt?'GPT 자동 요청 기록':'수동 도구 업무 기록';
@@ -93,6 +98,12 @@
     hermesJobs=items.filter(j=>j&&Number.isInteger(j.staffId)&&model.roster.some(p=>p.id===j.staffId)&&typeof j.title==='string'&&typeof j.status==='string');
     render();
   });
+  document.addEventListener('dongbaek-phone1-inbox',event=>{
+    const items=event.detail?.jobs;
+    if(!Array.isArray(items))return;
+    phone1Jobs=items.filter(j=>j&&Number.isInteger(j.staffId)&&model.roster.some(p=>p.id===j.staffId)&&typeof j.title==='string'&&typeof j.status==='string');
+    render();
+  });
   document.addEventListener('dongbaek-manager-stage',event=>{
     const d=event.detail||{};
     if(!Number.isInteger(d.workerId)||!model.roster.some(p=>p.id===d.workerId))return;
@@ -101,8 +112,8 @@
   });
   window.DongbaekTeam10Live=Object.freeze({snapshot:()=>model.roster.map(p=>{
     const job=bestJob(visibleJobs(),p.id);
-    const hermes=hermesFor(p.id);
-    return {id:p.id,name:p.name,status:labelFor(p,job),taskId:hermes?.id||job?.id||null,source:hermes?'hermes':job?(job.gpt?'gpt':'manual'):null};
+    const hermes=hermesFor(p.id),phone1=phone1For(p.id);
+    return {id:p.id,name:p.name,status:labelFor(p,job),taskId:phone1?.id||hermes?.id||job?.id||null,source:phone1?'phone1':hermes?'hermes':job?(job.gpt?'gpt':'manual'):null};
   })});
   render();
 })();
