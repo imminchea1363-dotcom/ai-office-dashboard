@@ -55,8 +55,13 @@ def push(payload, url, token):
     data = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode()
     req = request.Request(url, data=data, method="POST", headers={
         "Content-Type": "application/json", "Authorization": "Bearer " + token})
+    class NoRedirect(request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            return None
     try:
-        with request.urlopen(req, timeout=10) as resp:
+        with request.build_opener(NoRedirect()).open(req, timeout=10) as resp:
+            if resp.status != 200:
+                raise RuntimeError(f"전송 실패 HTTP {resp.status}")
             return resp.status
     except error.HTTPError as ex:
         raise RuntimeError(f"전송 실패 HTTP {ex.code}") from None
