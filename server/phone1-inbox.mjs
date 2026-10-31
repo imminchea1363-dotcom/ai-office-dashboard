@@ -127,7 +127,7 @@ export async function handlePhone1Inbox(req,env){
    if(!await authorized(req,env.OFFICE_ACCESS_TOKEN))throw new InputError(401,'unauthorized','사무실 인증에 실패했습니다.');
   }
   await env.DB.prepare(SCHEMA).run();
-  return isAgent?agent(req,env,url):office(req,env,url);
+  return isAgent?await agent(req,env,url):await office(req,env,url);
  }catch(error){
   return reply({error:error instanceof InputError?error.code:'inbox_error',message:error instanceof InputError?error.message:'업무 기록을 처리하지 못했습니다.'},error instanceof InputError?error.status:503,isAgent?'':origin);
  }
