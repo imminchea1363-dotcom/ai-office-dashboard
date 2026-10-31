@@ -99,7 +99,7 @@
   if (!/^[!-~]{20,256}$/.test(value)) { message('접속 암호는 공백 없이 영문·숫자·기호 20~256자로 입력해 주세요.'); return; }
   access = value; busy = true; update(); message('연결 서버를 확인하고 있습니다…');
   try {
-   const data = await call('/api/status'); connected = true; capabilities=data.providers||{chatgpt:{configured:true}}; $('db-gpt-access').value = ''; $('db-gpt-settings').open = false;
+   const data = await call('/api/status'); connected = true; capabilities=data.providers||{chatgpt:{configured:true}}; document.dispatchEvent(new CustomEvent('dongbaek-ai-providers',{detail:{providers:capabilities}})); $('db-gpt-access').value = ''; $('db-gpt-settings').open = false;
    message(`서버 인증 확인 · ${Object.entries(capabilities).map(([name,value])=>name+': '+(value.configured?'API 키 설정 감지':'미설정')).join(' / ')} · 오늘 ${data.used.today}/${data.limits.daily}회, 전체 ${data.used.total}/${data.limits.pilot}회. 실제 모델 실행 성공은 별도 확인이 필요합니다.`);
   } catch (error) { disconnect(); message(error.message === 'Failed to fetch' ? '서버 코드·DB·접속 암호 설정과 인터넷 연결을 확인해 주세요.' : error.message); }
   finally { busy = false; update(); renderRecovery(); }
@@ -109,7 +109,7 @@
   if (!connected || busy) return;
   const job = desk.startGPT(); if (!job) return;
   busy = true; update(); message('GPT가 업무를 작성하고 있습니다. 중복 요청은 보내지 않습니다.');
-  try { const result = await call('/api/jobs', { id: job.id, staffId: job.workerId, provider: job.service, title: job.title, brief: job.brief, output: job.output }); desk.finishGPT(job.id, result); message('GPT 작업 완료. 아래 보고함에서 결과를 검토하고 대표에게 보고해 주세요.'); }
+  try { const result = await call('/api/jobs', { id: job.id, staffId: job.workerId, provider: job.service, title: job.title, brief: job.brief, output: job.output }); desk.finishGPT(job.id, result); document.dispatchEvent(new CustomEvent('dongbaek-ai-execution-success',{detail:{provider:job.service}})); message('AI 실제 응답 수신 · GPT 작업 완료. 아래 보고함에서 결과를 검토하고 대표에게 보고해 주세요.'); }
   catch (error) {
    const pending = !error.code || ['pending', 'uncertain', 'server_error'].includes(error.code);
    desk.failGPT(job.id, pending);
