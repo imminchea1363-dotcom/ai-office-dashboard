@@ -55,6 +55,9 @@ test('Hermes mailbox: isolated credentials, durable claims, no automatic executi
   reply=await worker.fetch(agent('/api/hermes/agent/result',{id:t.id,claimToken:crypto.randomUUID(),status:'completed',result:'bad'}),e);a.equal(reply.status,409);
   reply=await worker.fetch(agent('/api/hermes/agent/result',{id:t.id,claimToken:claimed.claimToken,status:'completed',result:'본문 초안'}),e);a.equal(reply.status,200);
   reply=await worker.fetch(agent('/api/hermes/agent/result',{id:t.id,claimToken:claimed.claimToken,status:'completed',result:'again'}),e);a.equal(reply.status,409);
+  reply=await worker.fetch(agent('/api/hermes/agent/status',{id:t.id,claimToken:claimed.claimToken}),e);
+  a.equal(reply.status,200);a.equal((await reply.json()).received,true);
+  reply=await worker.fetch(agent('/api/hermes/agent/status',{id:t.id,claimToken:crypto.randomUUID()}),e);a.equal(reply.status,409);
   reply=await worker.fetch(office('/api/hermes/tasks?id='+t.id),e);const saved=await reply.json();
   a.equal(saved.status,'completed');a.equal(saved.result,'본문 초안');a.equal(saved.claimToken,undefined);
   a.equal((await (await worker.fetch(agent('/api/hermes/agent/next'),e)).json()).task,null);
@@ -65,6 +68,8 @@ test('Hermes mailbox: isolated credentials, durable claims, no automatic executi
   a.equal(taken.id,stuck.id);
   a.equal((await (await worker.fetch(agent('/api/hermes/agent/next'),e)).json()).task,null);
   a.equal((await (await worker.fetch(office('/api/hermes/tasks?id='+stuck.id),e)).json()).status,'claimed');
+  reply=await worker.fetch(agent('/api/hermes/agent/status',{id:stuck.id,claimToken:taken.claimToken}),e);
+  a.equal((await reply.json()).received,false);
   // Backlog cap counts queued + claimed tasks.
   for(let i=0;i<24;i++){
    reply=await worker.fetch(office('/api/hermes/tasks',task()),e);a.equal(reply.status,201,'backlog item '+i);
