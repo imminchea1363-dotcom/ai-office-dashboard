@@ -1,11 +1,11 @@
 /* Build replaces the cache suffix with a content hash. */
 const ROOT = new URL('./', self.location.href);
 const PREFIX = 'dongbaek-pwa-' + encodeURIComponent(ROOT.pathname) + '-';
-const CACHE = PREFIX + 'source-v2';
+const CACHE = PREFIX + 'source-v3';
 const ASSETS = [
   './', './index.html', './characters.js', './pixel-mode.js', './v3.js', './pwa.js', './radio.js', './gym-music.js', './office-music.js', './docx-export.js', './ai-desk.js', './poster-studio.js', './office-manual.js', './office-archive.js', './office-sns.js', './video-library.js', './video-studio.js', './video-ai.js', './gpt-desk.js',
   './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png',
-  './icons/maskable-512.png', './assets/office-pixel.png', './assets/office-background.png','./assets/lobby-background.png','./assets/gym-background.png','./assets/characters-standing.png','./assets/characters-working.png','./assets/characters-gym.png','./assets/characters-cleaner.png','./assets/characters-coffee.png'
+  './icons/maskable-512.png', './assets/office-pixel.png', './assets/office-background.png','./assets/illustrated-team-office.png','./assets/lobby-background.png','./assets/gym-background.png','./assets/characters-standing.png','./assets/characters-working.png','./assets/characters-gym.png','./assets/characters-cleaner.png','./assets/characters-coffee.png'
 ];
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
