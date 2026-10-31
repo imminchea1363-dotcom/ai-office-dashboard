@@ -74,7 +74,11 @@ def main(argv=None):
             target.parent.mkdir(parents=True, exist_ok=True)
             tmp = target.with_name(target.name + ".tmp")
             tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-            os.chmod(tmp, 0o600)
+            try:
+                os.chmod(tmp, 0o600)
+            except (PermissionError, OSError):
+                # Android shared /sdcard can reject chmod; exported data contains counts only.
+                pass
             os.replace(tmp, target)
             print("직원 상태 저장:", target)
         if args.push_url:
