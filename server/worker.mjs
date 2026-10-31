@@ -13,7 +13,20 @@ const schema = `CREATE TABLE IF NOT EXISTS gpt_jobs (
  status TEXT NOT NULL, created INTEGER NOT NULL, result TEXT,
  input_tokens INTEGER, output_tokens INTEGER
 )`;
-const instructions = '당신은 동백사무실의 동백대리입니다. 대표의 지시에 따라 기획, 글 작성, 요약을 수행합니다. 한국어로 명료하게 답하세요. 제공되지 않은 사실, 가격, 시설 정보와 통계를 지어내지 마세요. 확인이 필요한 정보는 표시하세요. 외부 검색, 게시, 발송, 예약, 결제를 수행했다고 주장하지 마세요. 결과물을 바로 검토할 수 있게 작성하세요.';
+const baseInstructions = '당신은 동백사무실의 AI 작업 담당입니다. 한국어로 결과 초안을 작성하세요. 제공되지 않은 사실, 가격, 시설 정보와 통계를 지어내지 마세요. 확인이 필요한 정보는 표시하세요. 외부 검색·이미지 생성·영상 편집·게시·발송·예약·결제를 수행했다고 주장하지 마세요. 실제 외부 서비스를 작동시키지 않으며 결과는 대표 검수 전 초안입니다.';
+const staffRoles = Object.freeze([
+ '동백 총괄매니저: 업무를 분장하고 관련 근거·검토 사항과 대표 보고 초안을 정리합니다.',
+ '1팀 임채리 사원: 사용자 제공 자료만 조사·정리하고 출처가 없는 사실을 구분합니다.',
+ '2팀 임민채 대리: 영상·디자인의 컷 구성·자막·시안 기획 텍스트를 작성합니다. 실제 영상·이미지를 제작했다고 말하지 않습니다.',
+ '4팀 김검수 사원: 결과물의 사실관계·표현·수치·저작권 위험을 검토해 개선 요청을 작성합니다.',
+ '1팀 홍보기획 사원: 광고 타깃·메시지·CTA를 기획하고 확인 안 된 성과를 추정 사실로 말하지 않습니다.',
+ '2팀 광고영상 사원: Higgsfield·Runway용 장면 기획과 제작 지시문을 작성합니다. 실제 외부 영상을 생성하지 않습니다.',
+ '2팀 영상편집 사원: 실사 원본 기반 FFmpeg/CapCut 편집 계획과 9:16 자막·컷 목록을 작성합니다. 영상 파일 작업은 별도 실행 환경이 필요합니다.',
+ '3팀 SNS 운영팀장: 인스타·스레드·유튜브·틱톡 게시 문안을 작성합니다. 게시·예약 완료라고 말하지 않습니다.',
+ '3팀 블로그 사원: 블로그 글의 구성·본문·검색용 제목 초안을 작성하고 근거 없는 리뷰·경험을 만들지 않습니다.',
+ '4팀 성과분석 사원: 제공된 수치만 계산·분석하고 근거 없는 매출·조회수나 캠페인 성과를 만들어내지 않습니다.'
+]);
+function staffInstruction(staffId){return baseInstructions+'\n[직원별 역할]\n'+staffRoles[staffId-1];}
 
 class Failure extends Error {
  constructor(status, code, message) { super(message); this.status = status; this.code = code; }
@@ -61,7 +74,9 @@ function validate(data) {
   if (typeof data[key] !== 'string' || !data[key].trim() || data[key].length > max) throw new Failure(400, 'invalid_task', '업무 제목과 지시 내용을 확인해 주세요.');
   return data[key].trim();
  };
- return { id: data.id, title: text('title', 100), brief: text('brief', 6000), output: text('output', 80) };
+ const staffId = data.staffId === undefined ? 1 : data.staffId;
+ if (!Number.isInteger(staffId) || staffId < 1 || staffId > 10) throw new Failure(400,'invalid_staff','등록된 10명 중 담당자를 선택해 주세요.');
+ return { id: data.id, title: text('title', 100), brief: text('brief', 6000), output: text('output', 80), staffId, legacy: data.staffId === undefined };
 }
 async function usage(db, day) {
  return await db.prepare('SELECT COUNT(*) AS total, COALESCE(SUM(CASE WHEN day = ? THEN 1 ELSE 0 END),0) AS today FROM gpt_jobs').bind(day).first();
@@ -109,7 +124,7 @@ export default {
    }
    if (request.method !== 'POST' || url.pathname !== '/api/jobs') throw new Failure(405, 'method_not_allowed', '요청 방식을 확인해 주세요.');
    const task = validate(await readJSON(request));
-   const fingerprint = await hash(JSON.stringify([task.title, task.brief, task.output]));
+   const fingerprint = await hash(JSON.stringify(task.legacy?[task.title, task.brief, task.output]:[task.title, task.brief, task.output, task.staffId]));
    const old = await env.DB.prepare('SELECT * FROM gpt_jobs WHERE id = ?').bind(task.id).first();
    if (old) return json(existing(old, fingerprint), 200, origin);
    const now = Date.now();
@@ -133,7 +148,7 @@ export default {
    try {
     remote = await fetch('https://api.openai.com/v1/responses', {
      method: 'POST', headers: { Authorization: 'Bearer ' + env.OPENAI_API_KEY, 'Content-Type': 'application/json' },
-     body: JSON.stringify({ model: MODEL, instructions, input: `[업무]\n${task.title}\n\n[지시]\n${task.brief}\n\n[결과 형태]\n${task.output}`, max_output_tokens: OUTPUT_LIMIT, store: false }),
+     body: JSON.stringify({ model: MODEL, instructions: staffInstruction(task.staffId), input: `[업무]\n${task.title}\n\n[지시]\n${task.brief}\n\n[결과 형태]\n${task.output}`, max_output_tokens: OUTPUT_LIMIT, store: false }),
      signal: AbortSignal.timeout(45000), redirect: 'manual'
     });
     if (!remote.ok) throw new Failure(502, 'upstream_error', remote.status === 429 ? 'OpenAI 잔액이나 사용 한도를 확인해 주세요. 자동 재실행하지 않았습니다.' : 'GPT 호출에 실패했습니다. API 키 권한과 모델 이용 가능 여부를 확인해 주세요.');
