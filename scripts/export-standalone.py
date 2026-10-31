@@ -15,7 +15,7 @@ html=html.replace('<script src="characters.js"></script>', '<script>window.Dongb
 background = base64.b64encode((root / 'assets/office-background.png').read_bytes()).decode('ascii')
 art = base64.b64encode((root / 'assets/office-pixel.png').read_bytes()).decode('ascii')
 html = html.replace('<script src="pixel-mode.js"></script>', '<script>window.DongbaekBackground="data:image/png;base64,' + background + '";window.DongbaekArtwork="data:image/png;base64,' + art + '";\n' + (root / 'pixel-mode.js').read_text(encoding='utf-8') + '\n</script>')
-for name in ['characters.js','v3.js', 'radio.js','gym-music.js', 'pwa.js','docx-export.js','ai-desk.js', 'poster-studio.js','office-manual.js','office-archive.js','gpt-desk.js']:
+for name in ['characters.js','v3.js', 'radio.js','gym-music.js', 'pwa.js','docx-export.js','team10-state.js','ai-desk.js','team10-live-board.js', 'poster-studio.js','office-manual.js','office-archive.js','gpt-desk.js']:
     html = html.replace('<script src="' + name + '"></script>', '<script>\n' + (root / name).read_text(encoding='utf-8') + '\n</script>')
 output.write_text(html, encoding='utf-8')
 print(output)
