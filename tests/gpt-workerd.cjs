@@ -5,6 +5,7 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 const origin = 'https://imminchea1363-dotcom.github.io';
 const password = 'mock-only-office-access-password-24';
+const hermesPassword = 'mock-only-hermes-agent-password-32-characters';
 (async () => {
  const agent = createFetchMock(); agent.disableNetConnect();
  agent.get('https://openai.mock').intercept({path:'/probe',method:'GET'}).reply(200,'OK').persist();
@@ -15,7 +16,7 @@ const password = 'mock-only-office-access-password-24';
  const outbound=createFetchMock();outbound.disableNetConnect();
  outbound.get('https://api.openai.com').intercept({path:'/v1/responses',method:'POST'}).reply(200,()=>{calls++;return JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'모의 GPT 결과'}]}],usage:{input_tokens:10,output_tokens:10}});}).persist();
  const scriptPath=path.join(__dirname,'../server/worker.mjs');
- const runtime=new Miniflare({ modules:true, compatibilityDate:'2026-08-01',scriptPath,fetchMock:outbound,d1Databases:['DB'],bindings:{OPENAI_API_KEY:'sk-mock-not-a-real-key',OFFICE_ACCESS_TOKEN:password},log:new Log(LogLevel.INFO) });
+ const runtime=new Miniflare({ modules:true, compatibilityDate:'2026-08-01',scriptPath,fetchMock:outbound,d1Databases:['DB'],bindings:{OPENAI_API_KEY:'sk-mock-not-a-real-key',OFFICE_ACCESS_TOKEN:password,HERMES_AGENT_TOKEN:hermesPassword},log:new Log(LogLevel.INFO) });
  const headers={Origin:origin,Authorization:'Bearer '+password,'Content-Type':'application/json'};
  try {
   let r=await runtime.dispatchFetch('https://worker.test/api/status',{headers});assert.equal(r.status,200);console.log('RUNTIME_STATUS '+await r.text());
@@ -24,6 +25,29 @@ const password = 'mock-only-office-access-password-24';
   const result=await r.json();console.log('RUNTIME_GENERATE '+JSON.stringify({status:r.status,result,calls}));
   assert.equal(r.status,200);assert.equal(result.result,'모의 GPT 결과');assert.equal(calls,1);
   r=await runtime.dispatchFetch('https://worker.test/api/result?id='+task.id,{headers});assert.equal(r.status,200);assert.equal(calls,1);
+  const mailboxTask={id:crypto.randomUUID(),staffId:3,title:'검수용 SNS 문구',brief:'확인된 내용으로만 초안 작성',output:'문구 초안'};
+  r=await runtime.dispatchFetch('https://worker.test/api/hermes/tasks',{method:'POST',headers,body:JSON.stringify(mailboxTask)});
+  assert.equal(r.status,201,'Hermes task must be stored in the live D1 runtime');
+  const agentHeaders={Authorization:'Bearer '+hermesPassword,'Content-Type':'application/json'};
+  r=await runtime.dispatchFetch('https://worker.test/api/hermes/agent/next',{headers:agentHeaders});
+  assert.equal(r.status,200);
+  const received=(await r.json()).task;
+  assert.equal(received.id,mailboxTask.id);
+  assert.equal(received.mode,'draft_only');
+  r=await runtime.dispatchFetch('https://worker.test/api/hermes/agent/result',{
+   method:'POST',headers:agentHeaders,
+   body:JSON.stringify({id:received.id,claimToken:received.claimToken,status:'completed',result:'대표 검수 대기 초안'})
+  });
+  assert.equal(r.status,200);
+  r=await runtime.dispatchFetch('https://worker.test/api/hermes/agent/status',{
+   method:'POST',headers:agentHeaders,
+   body:JSON.stringify({id:received.id,claimToken:received.claimToken})
+  });
+  assert.equal((await r.json()).received,true);
+  r=await runtime.dispatchFetch('https://worker.test/api/hermes/tasks?id='+mailboxTask.id,{headers});
+  assert.equal((await r.json()).result,'대표 검수 대기 초안');
+  assert.equal(calls,1,'Hermes queue must not trigger OpenAI generation');
+  console.log('PASS Hermes actual workerd D1 mailbox: one-shot claim, agent result, authenticated recovery, no GPT billing');
   console.log('PASS actual Cloudflare workerd: D1 schema, authentication, single mocked Responses request and result recovery');
  }finally{await runtime.dispose();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
