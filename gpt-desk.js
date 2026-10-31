@@ -7,7 +7,7 @@
  const SERVER = 'https://dongbaek-api.imminchea1363.workers.dev';
  let connected = false, access = '', busy = false;
  const panel = document.createElement('div'); panel.className = 'db-ai-gpt'; panel.id = 'db-gpt-panel';
- panel.innerHTML = `<h3>동백대리 · GPT 시험 연결</h3><p>총괄 직원에게 지시하면 GPT가 작성한 결과를 아래 보고함에 기록합니다. 다른 도구는 기존처럼 직접 열어 이용합니다. 업무 지시가 OpenAI로 전송되며 결과는 연결 서버와 이 브라우저에 저장됩니다.</p><details id="db-gpt-settings" open><summary>GPT 연결 설정</summary><form id="db-gpt-connect-form"><label>사무실 접속 암호<input id="db-gpt-access" type="password" autocomplete="off" minlength="20" maxlength="256" required placeholder="Cloudflare에 등록한 사무실 접속 암호"></label><p>OpenAI API 키를 입력하는 칸이 아닙니다. 접속 암호는 이 페이지를 닫거나 연결을 해제하면 사라집니다.</p><div class="db-ai-actions"><button id="db-gpt-connect" type="submit">연결 확인</button><button id="db-gpt-disconnect" type="button">연결 해제</button></div></form></details><p id="db-gpt-status" role="status" aria-live="polite">서버 설정 후 연결할 수 있습니다. 연결 확인만으로는 GPT를 호출하지 않습니다.</p><p>시험 한도: 한국시간 기준 하루 20회 · 전체 200회 · 한 번에 최대 1,200 출력 토큰. 실패한 실행도 한도에 포함될 수 있습니다. 자동 반복 실행과 외부 게시는 하지 않습니다.</p>`;
+ panel.innerHTML = `<h3>직원 10명 · GPT 실행 연결</h3><p>등록된 직원 10명 각각에게 실제 GPT 텍스트 업무를 실행할 수 있습니다. 역할별 작업 초안을 보고함에 기록합니다. 이미지·영상 생성 및 다른 도구 연결은 별도입니다. 업무 지시가 OpenAI로 전송되며 결과는 연결 서버와 이 브라우저에 저장됩니다.</p><details id="db-gpt-settings" open><summary>GPT 연결 설정</summary><form id="db-gpt-connect-form"><label>사무실 접속 암호<input id="db-gpt-access" type="password" autocomplete="off" minlength="20" maxlength="256" required placeholder="Cloudflare에 등록한 사무실 접속 암호"></label><p>OpenAI API 키를 입력하는 칸이 아닙니다. 접속 암호는 이 페이지를 닫거나 연결을 해제하면 사라집니다.</p><div class="db-ai-actions"><button id="db-gpt-connect" type="submit">연결 확인</button><button id="db-gpt-disconnect" type="button">연결 해제</button></div></form></details><p id="db-gpt-status" role="status" aria-live="polite">서버 설정 후 연결할 수 있습니다. 연결 확인만으로는 GPT를 호출하지 않습니다.</p><p>시험 한도: 한국시간 기준 하루 20회 · 전체 200회 · 한 번에 최대 1,200 출력 토큰. 실패한 실행도 한도에 포함될 수 있습니다. 자동 반복 실행과 외부 게시는 하지 않습니다.</p>`;
  section.querySelector('.db-ai-tools').before(panel);
  const css = document.createElement('style'); css.textContent = '.db-ai-gpt{padding:18px;border:1px solid #abc3ab;border-radius:10px;background:#eef4e9;margin:16px 0;overflow-wrap:anywhere}.db-ai-gpt h3{margin-top:0}.db-ai-gpt form{margin-top:13px;max-width:620px}.db-ai-gpt p{font-size:12px}.db-ai-gpt input{margin-top:5px}#db-gpt-status{font-weight:600;margin:13px 0 0}.db-gpt-recovery{padding:10px;background:#eef4e9;border-radius:7px;margin:9px 0}.db-ai-gpt summary{cursor:pointer}#db-gpt-run[hidden],#db-manager-run[hidden]{display:none}'; document.head.append(css);
  const run = document.createElement('button'); run.type = 'button'; run.id = 'db-gpt-run'; run.className = 'db-ai-primary'; run.textContent = 'GPT로 실행 · 사용료 발생';
@@ -70,9 +70,9 @@
  }
  const message = text => { $('db-gpt-status').textContent = text; };
  function update() {
-  const eligible = $('db-ai-worker').value === '1' && $('db-ai-service').value === 'chatgpt';
+  const eligible = window.DongbaekTeam10State?.roster.some(p=>String(p.id)===$('db-ai-worker').value) && $('db-ai-service').value === 'chatgpt';
   run.hidden = !eligible; run.disabled = !connected || busy || desk.pendingGPT().length > 0;
-  managerButton.hidden = !eligible;
+  managerButton.hidden = !eligible || $('db-ai-worker').value !== '1';
   managerButton.disabled = !connected || busy || desk.pendingGPT().length > 0;
   quickButton.disabled = !connected || busy || desk.pendingGPT().length > 0;
   $('db-gpt-connect').disabled = busy; $('db-gpt-disconnect').disabled = busy;
@@ -105,7 +105,7 @@
   if (!connected || busy) return;
   const job = desk.startGPT(); if (!job) return;
   busy = true; update(); message('GPT가 업무를 작성하고 있습니다. 중복 요청은 보내지 않습니다.');
-  try { const result = await call('/api/jobs', { id: job.id, title: job.title, brief: job.brief, output: job.output }); desk.finishGPT(job.id, result); message('GPT 작업 완료. 아래 보고함에서 결과를 검토하고 대표에게 보고해 주세요.'); }
+  try { const result = await call('/api/jobs', { id: job.id, staffId: job.workerId, title: job.title, brief: job.brief, output: job.output }); desk.finishGPT(job.id, result); message('GPT 작업 완료. 아래 보고함에서 결과를 검토하고 대표에게 보고해 주세요.'); }
   catch (error) {
    const pending = !error.code || ['pending', 'uncertain', 'server_error'].includes(error.code);
    desk.failGPT(job.id, pending);
