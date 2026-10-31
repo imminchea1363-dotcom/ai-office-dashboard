@@ -155,7 +155,7 @@
   });
   window.DongbaekAIDesk=Object.freeze({
     startGPT:()=>{
-      if(current().workerId!==1||provider.value!=='chatgpt'){notice('GPT 시험 연결은 총괄 직원과 ChatGPT를 선택해 주세요.');return null;}
+      if(!window.DongbaekTeam10State?.roster.some(p=>p.id===current().workerId)||provider.value!=='chatgpt'){notice('등록된 직원과 ChatGPT를 선택해 주세요.');return null;}
       if(jobs.some(j=>j.gpt&&['generating','pending'].includes(j.status))){notice('먼저 진행 중인 GPT 업무의 결과를 확인해 주세요.');return null;}
       draft.jobId=null;const job=prepareJob();if(!job)return null;
       job.gpt=true;job.status='generating';persist();renderJobs();return {...job};
