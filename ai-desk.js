@@ -50,8 +50,8 @@
     const link=el('a','서비스 열기 ↗');link.href=item.url;link.target='_blank';link.rel='noopener noreferrer';link.dataset.aiServiceLink=item.id;card.append(link);byId('db-ai-tools').append(card);
   }
   function refreshWorkers(){
-    const visible=office.employees().filter(p=>p.state!=='off');
-    const extra=(window.DongbaekTeam10State?.roster||[]).filter(p=>!visible.some(current=>current.id===p.id));
+    const visible=office.employees().filter(p=>p.state!=='off'&&p.id<=4);
+    const extra=(window.DongbaekTeam10State?.roster||[]).filter(p=>p.id>4);
     const people=[...visible,...extra],signature=JSON.stringify(people.map(p=>[p.id,p.name,p.job]));
     if(worker.dataset.signature===signature)return;
     const selected=worker.value||String(draft.workerId||1);worker.replaceChildren();
@@ -62,7 +62,7 @@
   refreshWorkers();provider.value=service(draft.service||assignments[worker.value]||defaults[worker.value]).id;
   title.value=clean(draft.title,100);brief.value=clean(draft.brief,6000);if([...output.options].some(o=>o.value===draft.output))output.value=draft.output;
   function instruction(job){return ['[동백 사무실 업무 지시]','담당: '+job.job+' · '+job.workerName,'업무: '+job.title,'사용 도구: '+service(job.service).name,'','[요청 내용]',job.brief,'','[원하는 결과]',job.output,'확인되지 않은 정보는 추측하지 말고 확인이 필요한 부분을 표시해 주세요.'].join('\n');}
-  function current(){const person=office.employees().find(p=>String(p.id)===worker.value)||window.DongbaekTeam10State?.roster.find(p=>String(p.id)===worker.value);return {workerId:person?.id||0,workerName:person?.name||'담당 직원',job:person?.job||'업무',service:provider.value,title:title.value.trim(),brief:brief.value.trim(),output:output.value};}
+  function current(){const id=Number(worker.value),person=id<=4?office.employees().find(p=>p.id===id):window.DongbaekTeam10State?.roster.find(p=>p.id===id);return {workerId:person?.id||0,workerName:person?.name||'담당 직원',job:person?.job||'업무',service:provider.value,title:title.value.trim(),brief:brief.value.trim(),output:output.value};}
   function updateDraft(){draft={...current(),jobId:draft.jobId};prompt.value=instruction(draft);byId('db-ai-open').href=service(provider.value).url;byId('db-ai-open').textContent='2. '+service(provider.value).name+' 열기 ↗';}
   function prepareJob(){
     if(!form.reportValidity())return null;
@@ -109,7 +109,7 @@
       if(job.result)details.append(el('pre',job.result));if(job.url){const link=el('a','저장한 결과 열기 ↗');link.href=job.url;link.target='_blank';link.rel='noopener noreferrer';details.append(link);}card.append(details);
       const actions=el('div',null,'db-ai-actions');const record=el('button','결과 기록');record.dataset.aiRecord=job.id;record.disabled=['reporting','generating','pending'].includes(job.status);record.onclick=()=>{editing=job.id;byId('db-ai-result-title').textContent=job.title+' · '+service(job.service).name;byId('db-ai-result-text').value=job.result;byId('db-ai-result-url').value=job.url;byId('db-ai-result-error').textContent='';dialog.showModal();};actions.append(record);
       const report=el('button',job.status==='reported'?'보고 완료':'대표에게 보고');report.dataset.aiReport=job.id;report.disabled=!['ready'].includes(job.status);report.onclick=()=>{
-        const employee=office.employees().find(p=>p.id===job.workerId);
+        const employee=job.workerId<=4?office.employees().find(p=>p.id===job.workerId):null;
         if(!employee){
           const staged=window.DongbaekTeam10State?.roster.some(p=>p.id===job.workerId);
           if(!staged){notice('등록되지 않은 직원입니다. 업무 기록을 확인해 주세요.');return;}
