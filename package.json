@@ -18,6 +18,7 @@
     "test:gpt-browser": "node tests/gpt-desk.cjs",
     "test:gpt-runtime": "node tests/gpt-workerd.cjs",
     "test:video-review": "node tests/video-review.cjs",
-    "test:staff-seating": "node tests/staff-seating.cjs"
+    "test:staff-seating": "node tests/staff-seating.cjs",
+    "test:hermes-bridge": "node --test tests/hermes-bridge.test.mjs && python3 -m unittest discover -s tests -p test_hermes_bridge.py"
   }
 }
