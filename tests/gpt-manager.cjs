@@ -44,7 +44,7 @@ const assert = require('node:assert/strict');
   await page.locator('#db-gpt-settings').evaluate(el => el.open=true);
   await page.fill('#db-gpt-access', secret);
   await page.click('#db-gpt-connect');
-  await page.waitForFunction(() => document.querySelector('#db-gpt-status').textContent.includes('연결 준비 완료'));
+  await page.waitForFunction(() => document.querySelector('#db-gpt-status').textContent.includes('서버 인증 확인'));
  }
  try {
   await page.goto(base);
