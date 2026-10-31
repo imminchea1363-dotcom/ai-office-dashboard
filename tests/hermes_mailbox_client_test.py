@@ -52,6 +52,21 @@ class MailboxClientTest(unittest.TestCase):
                 self.assertEqual(sent[1][1]["claimToken"], task["claimToken"])
                 self.assertFalse(state.exists())
 
+    def test_verify_completed_claim_safely_clears_local_state(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory) / "claim.json"
+            state.write_text(json.dumps({"id": "task", "claimToken": "claim-secret"}), encoding="utf-8")
+            received = []
+            def fake_api(path, payload=None):
+                received.append((path, payload))
+                return {"id": "task", "status": "completed", "received": True}
+            with patch.object(client, "STATE", state), patch.object(client, "api", fake_api):
+                with redirect_stdout(io.StringIO()):
+                    client.verify()
+                self.assertFalse(state.exists())
+                self.assertEqual(received[0][0], "/api/hermes/agent/status")
+                self.assertEqual(received[0][1]["claimToken"], "claim-secret")
+
     def test_failed_submission_keeps_claim_for_manual_recovery(self):
         with tempfile.TemporaryDirectory() as directory:
             state = Path(directory) / "claim.json"
