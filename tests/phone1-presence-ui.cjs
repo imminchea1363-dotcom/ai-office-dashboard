@@ -39,7 +39,7 @@ const {chromium}=require('playwright');
   await page.waitForFunction(()=>document.querySelector('#db-phone1-presence-state').textContent.includes('연결 상태 확인 필요'));
   assert.doesNotMatch(await page.locator('#db-phone1-presence-state').textContent(),/업무 중/);
   await page.locator('#db-phone1-presence-disconnect').click();
-  assert.match(await page.locator('#db-phone1-presence-state').textContent(),/연결 이력 없음/);
+  assert.match(await page.locator('#db-phone1-presence-state').textContent(),/연결 전/);
   assert.deepEqual(errors,[]);
   console.log('PASS phone1 presence browser: no fictional work, real working signals, stale fallback, opt-in auth and no persisted credentials');
  }finally{await context.close();await browser.close();}
