@@ -5,6 +5,8 @@
   if(!office)return;
   const services=[
     {id:'chatgpt',name:'ChatGPT',use:'기획 · 글쓰기 · 검수',url:'https://chatgpt.com/'},
+    {id:'gemini',name:'Gemini API',use:'조사·기획 초안',url:'https://aistudio.google.com/'},
+    {id:'nemotron',name:'NVIDIA Nemotron API',use:'검수·분석 초안',url:'https://build.nvidia.com/'},
     {id:'runway',name:'Runway',use:'AI 영상 · 이미지',url:'https://app.runwayml.com/'},
     {id:'microsoft',name:'Microsoft 365',use:'문서 · 엑셀 · 발표자료',url:'https://www.microsoft365.com/'},
     {id:'higgsfield',name:'Higgsfield AI',use:'AI 영상 · 광고',url:'https://higgsfield.ai/'},
@@ -155,7 +157,7 @@
   });
   window.DongbaekAIDesk=Object.freeze({
     startGPT:()=>{
-      if(!window.DongbaekTeam10State?.roster.some(p=>p.id===current().workerId)||provider.value!=='chatgpt'){notice('등록된 직원과 ChatGPT를 선택해 주세요.');return null;}
+      if(!window.DongbaekTeam10State?.roster.some(p=>p.id===current().workerId)||!['chatgpt','gemini','claude','nemotron'].includes(provider.value)){notice('등록된 직원과 연결 지원 AI를 선택해 주세요.');return null;}
       if(jobs.some(j=>j.gpt&&['generating','pending'].includes(j.status))){notice('먼저 진행 중인 GPT 업무의 결과를 확인해 주세요.');return null;}
       draft.jobId=null;const job=prepareJob();if(!job)return null;
       job.gpt=true;job.status='generating';persist();renderJobs();return {...job};
