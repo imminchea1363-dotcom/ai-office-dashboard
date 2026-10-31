@@ -42,6 +42,13 @@
    ? ['동백총괄매니저 업무 배정','임채리사원 자료조사','임민채대리 디자인 기획','김검수사원 검수','동백총괄매니저 최종 보고']
    : ['동백총괄매니저 업무 배정','임채리사원 자료조사','김검수사원 검수','동백총괄매니저 최종 보고'];
  }
+ function announceStage(record,index,status,title){
+  const workers=record.design?[1,2,3,4,1]:[1,2,4,1];
+  const workerId=workers[Math.max(0,Math.min(workers.length-1,index))];
+  document.dispatchEvent(new CustomEvent('dongbaek-manager-stage',{
+   detail:{parentId:record.parentId,workerId,status,title:String(title||'').slice(0,120)}
+  }));
+ }
  function renderSteps(job){
   const steps=planSteps(job);
   $('db-manager-quick-stages').replaceChildren(...steps.map((name,i)=>{
@@ -183,6 +190,7 @@
      record.posterReady=true;
      if(!saveManager())throw new Error('포스터 생성 기록을 저장하지 못했습니다. 유료 GPT 호출 없이 복구할 수 있습니다.');
     }
+    announceStage(record,index,'running',task.title);
     message('총괄 자동 배정: ' + (index + 1) + '/'+record.parts.length+'단계 진행 중 · ' + task.title);
     if(quickParentId===record.parentId) quickStatus(index, (index + 1) + '/'+record.parts.length+'단계 진행 중: ' + task.title);
     let response;
@@ -198,12 +206,15 @@
     if (!part.result) throw new Error('GPT 결과가 비어 있어 다음 직원에게 전달하지 않았습니다.');
     record.stage = index + 1;
     if (!saveManager()) throw new Error('진행 결과 저장 실패. 추가 GPT 호출을 중단했습니다.');
+    announceStage(record,index,'complete',task.title);
    }
+   announceStage(record,record.parts.length-1,'finished','종합 보고서 저장');
    desk.finishGPT(record.parentId, {result: composeManagerReport(record), usage: {calls: record.parts.length}, autoReport: true});
    delete managerRuns[record.parentId]; saveManager();
    message('직원별 GPT 처리와 총괄 보고서 작성 완료. 대표실 보고를 요청했습니다. 보고함에서 상태를 확인하세요.');
    if(quickParentId===record.parentId) quickStatus(record.parts.length,'GPT '+record.parts.length+'단계 완료 · 대표실 보고 상태는 아래 보고함에서 확인하세요.');
   } catch (error) {
+   announceStage(record,record.stage,'paused','GPT 결과 확인 또는 연결 복구 필요');
    desk.failGPT(record.parentId, true);
    if (error.status === 401) disconnect();
    message('자동 배정 중단: ' + (error.message || '결과를 확인할 수 없습니다.') + ' · 자동 재실행하지 않습니다. 아래 업무에서 결과 확인 후 재개하세요.');
