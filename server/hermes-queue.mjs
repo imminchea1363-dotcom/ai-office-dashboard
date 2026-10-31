@@ -98,11 +98,17 @@ async function agent(request,env,url){
   if(!['completed','failed'].includes(data.status))throw new QueueError(400,'invalid_status','완료 또는 실패 상태만 허용합니다.');
   const result=requiredText(data,'result',12000),now=Date.now();
   const saved=await env.DB.prepare(
-    'UPDATE hermes_tasks SET status=?,result=?,finished=?,claim_token=NULL'+
+    'UPDATE hermes_tasks SET status=?,result=?,finished=?'+
     " WHERE id=? AND status='claimed' AND claim_token=?"
   ).bind(data.status,result,now,id,token).run();
   if(!saved.meta?.changes)throw new QueueError(409,'claim_conflict','업무를 찾지 못했거나 이미 처리된 결과입니다. 재실행하지 마세요.');
   return answer({id,status:data.status,finished:now},200);
+ }
+ if(request.method==='POST'&&url.pathname==='/api/hermes/agent/status'){
+  const data=await bodyJSON(request),id=requestId(data.id),token=requestId(data.claimToken);
+  const row=await env.DB.prepare('SELECT status,finished FROM hermes_tasks WHERE id=? AND claim_token=?').bind(id,token).first();
+  if(!row)throw new QueueError(409,'claim_conflict','이 수신 업무의 현재 상태를 확인할 수 없습니다. 서버 관리자 확인이 필요합니다.');
+  return answer({id,status:row.status,finished:row.finished,received:['completed','failed'].includes(row.status)},200);
  }
  throw new QueueError(405,'method_not_allowed','Hermes 연결 경로 또는 메서드를 확인해 주세요.');
 }
