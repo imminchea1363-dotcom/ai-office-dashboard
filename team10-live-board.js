@@ -63,7 +63,7 @@
     const jobs=visibleJobs();
     const pending=jobs.filter(j=>!['reported','failed'].includes(j.status)).length;
     const completed=jobs.filter(j=>j.status==='reported').length;
-    stats.textContent='등록된 업무 '+jobs.length+'건 · 진행·확인 '+pending+'건 · 보고 접수 '+completed+'건';
+    stats.textContent='등록 직원 '+model.roster.length+'명 · 업무 기록 '+jobs.length+'건 · 진행·확인 '+pending+'건 · 보고 접수 '+completed+'건';
     cards.replaceChildren();
     for(const person of model.roster){
       const job=bestJob(jobs,person.id);
