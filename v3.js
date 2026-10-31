@@ -104,6 +104,25 @@ s+=`<rect x="${-width/2}" y="24" width="${width}" height="29" rx="13" fill="${p.
 return `<g class="db-actor ${working?'db-working':''} ${walking?'db-walking':''} ${gym?'db-gym':''} ${wave?'db-waving':''}" data-worker="${p.id}" data-gender="${p.gender}" data-pose="${pose}" tabindex="0" role="button" aria-label="${E(label)} · ${stateNames[p.state]||'안내'} · ${views[p.loc]?.[0]||''}">${s}</g>`;
 }
 function personAt(p,u,v,opts={},z=0){return at(u,v,z,avatar(p,opts));}
+// A staff member and chair share one ground anchor. Draw chair behind the painted
+// sitting sprite, then the desk front in front of their lower body: no floating.
+function seatedWorker(p,u,v){
+ const seat=at(u,v,0,
+  '<g class="db-work-seat" data-work-seat="'+p.id+'">'+
+  '<ellipse cx="0" cy="20" rx="56" ry="15" fill="#514d3c" opacity=".18"/>'+
+  '<path d="M-42 -85Q0 -107 42 -85L42 -8Q0 5 -42 -8Z" fill="#507966" stroke="#2e5144" stroke-width="5"/>'+
+  '<rect x="-38" y="-23" width="76" height="20" rx="9" fill="#799b81" stroke="#375d4d" stroke-width="4"/>'+
+  '<path d="M-30 -6L-37 27M30 -6L37 27M0 -4V28M-30 20H30" stroke="#655b4a" stroke-width="6" stroke-linecap="round"/>'+
+  '</g>');
+ const worker=personAt(p,u,v,{pose:'work',bubble:''});
+ const desk=at(u,v,0,
+  '<g class="db-workstation-front" data-workstation="'+p.id+'" pointer-events="none">'+
+  '<path d="M-70 -18H70L77 0H-77Z" fill="#eed4a8" stroke="#94764d" stroke-width="3"/>'+
+  '<path d="M-77 0H77V14Q0 27 -77 14Z" fill="#ad8255" stroke="#806344" stroke-width="3"/>'+
+  '<path d="M-58 17V40M58 17V40" stroke="#806344" stroke-width="6"/>'+
+  '</g>');
+ return seat+worker+desk;
+}
 function dog(){if(window.DongbaekPixel)return window.DongbaekPixel.dog();return `<g class="db-dog-route"><ellipse cy="10" rx="45" ry="15" fill="#6f895d" opacity=".18"/><g class="db-dog-body"><path class="db-tail" d="M-35-9Q-56-28-47-8" fill="none" stroke="#333e3c" stroke-width="10" stroke-linecap="round"/><g class="db-dog-leg"><path d="M-22-5L-24 20" stroke="#2e3938" stroke-width="13" stroke-linecap="round"/></g><g class="db-dog-leg back"><path d="M12-4L18 18" stroke="#35413f" stroke-width="13" stroke-linecap="round"/></g><ellipse cx="-8" cy="-16" rx="38" ry="26" fill="url(#db-dog)"/><path d="M9-43Q0-85 13-86Q28-78 29-42M35-42Q33-86 47-82Q62-72 53-38" fill="#2b3535"/><path d="M15-49L14-74 23-49M40-48L46-73 48-44" fill="#735c5c"/><ellipse cx="32" cy="-33" rx="30" ry="29" fill="url(#db-dog)"/><ellipse cx="23" cy="-36" rx="4" ry="5" fill="#e2d0a5"/><ellipse cx="47" cy="-35" rx="4" ry="5" fill="#e2d0a5"/><circle cx="24" cy="-36" r="2.6" fill="#1a2524"/><circle cx="48" cy="-35" r="2.6" fill="#1a2524"/><circle cx="25" cy="-38" r="1" fill="white"/><circle cx="49" cy="-37" r="1" fill="white"/><ellipse cx="42" cy="-17" rx="21" ry="14" fill="#505a56"/><ellipse cx="45" cy="-25" rx="9" ry="6" fill="#1e2927"/><path d="M41-8Q38 8 47 6Q54 3 50-9" fill="#d399a0"/><path d="M10-10L28 2" stroke="#baa26a" stroke-width="5"/><circle cx="23" cy="4" r="5" fill="#efda9b"/></g><rect x="-53" y="37" width="106" height="30" rx="14" fill="#fffae9" stroke="#b9cda4"/><text y="57" text-anchor="middle" font-size="15" font-weight="700" fill="#698450">동백이 🐾</text></g>`;}
 function elevatorScene(){if(window.DongbaekPixel)return window.DongbaekPixel.elevatorScene();return `<g filter="url(#db-shadow)"><rect x="325" y="130" width="700" height="670" rx="30" fill="#d3dfcd"/><rect x="360" y="165" width="630" height="590" rx="15" fill="#9ab2a1"/><path d="M400 175V742M950 175V742" stroke="#e2eadd" stroke-width="9"/><g id="db-cabin"><rect x="420" y="290" width="510" height="390" rx="12" fill="#eff3e7" stroke="#b4c7ae" stroke-width="8"/><path d="M420 600H930L880 680H470Z" fill="#d4d8c1"/><path d="M470 310V597M880 310V597" stroke="#d7e2ce" stroke-width="5"/></g><rect x="583" y="195" width="185" height="62" rx="12" fill="#4d6e55"/><text id="db-cabin-display" x="675" y="237" text-anchor="middle" font-size="30" fill="#ecf2ca"></text><text x="675" y="850" text-anchor="middle" font-size="18" fill="#7f986d">직원 이동을 따라가는 중입니다</text></g>`;}
 const floorOf=loc=>({lobby:1,office:3,pantry:3,gym:2,roof:1,director:4}[loc]||3);
@@ -121,7 +140,7 @@ function drawPeople(){if(view==='roof')return dog()+people.filter(p=>p.loc==='ro
 let s='';if(view==='director')s+=personAt(boss(),376,547,{pose:'sit',bubble:journey&&journey.steps[journey.index].key==='report'?'좋아요. 결과를 확인할게요':'보고와 질문을 기다립니다'});
 for(const p of people.filter(p=>p.loc===view)){
 const jp=journeyPosition(p);if(jp){s+=`<g id="db-moving-person">${personAt(p,...jp.uv,jp)}</g>`;continue;}
-if(view==='office'){const seat=desks[p.seat%desks.length];s+=personAt(p,seat[0],seat[1]+80,{pose:'work',bubble:p.state==='blocked'?'방향 확인이 필요해요':'컴퓨터로 작업 중 ···'});}
+if(view==='office'){const seat=desks[p.seat%desks.length];s+=seatedWorker(p,seat[0],seat[1]+80);}
 else if(view==='pantry'){
 // Feet are below the painted stool seats; IDs do not determine chair position.
 // Extra visitors get a visible stool rather than sharing a seat or floating.
