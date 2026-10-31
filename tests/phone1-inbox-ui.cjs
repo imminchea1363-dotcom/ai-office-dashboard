@@ -28,6 +28,7 @@ const {chromium}=require('playwright');
  const page=await context.newPage();const errors=[];
  page.on('pageerror',e=>errors.push(e.message));
  try{
+  await page.clock.install();
   await page.goto(base);
   assert.equal(requests.length,0,'No request before explicit user action');
   assert.equal(await page.locator('#db-phone1-inbox').count(),1);
@@ -38,6 +39,10 @@ const {chromium}=require('playwright');
   assert.match(await page.locator('[data-staff-id="9"] .db-t10-status').textContent(),/1호 업무 지시 접수/);
   assert.equal(await page.evaluate(()=>DongbaekTeam10Live.snapshot().find(w=>w.id===9).source),'phone1');
   assert.equal(await page.locator('#db-p1-inbox-access').inputValue(),'');
+  const autoRead=page.waitForResponse(response=>response.url().includes('/api/phone1/inbox')&&response.request().method()==='GET');
+  await page.clock.fastForward(30001);
+  await autoRead;
+  assert.equal(requests.filter(r=>r.method==='GET').length,2,'Authenticated phone1 inbox should poll read-only after 30 seconds');
   await page.locator('[data-phone1-reply] textarea').fill('촬영된 영상 원본을 기준으로 작성한 SNS 초안');
   await page.locator('[data-phone1-reply] button').click();
   await page.waitForFunction(()=>document.querySelector('#db-p1-inbox-status').textContent.includes('1호에 결과'));
@@ -48,7 +53,7 @@ const {chromium}=require('playwright');
   assert.equal(stored.includes(secret),false,'No credential persistence');
   await page.reload();
   assert.equal(await page.locator('[data-phone1-task]').count(),0,'No false saved server receipt on new session');
-  assert.equal(requests.length,2,'No silent retry or polling after reload');
+  assert.equal(requests.length,3,'No silent retry or polling after reload');
   assert.deepEqual(errors,[]);
   console.log('PASS phone1 inbox browser: explicit receipt, 10-person task status, draft return, no auto-execution, no key storage or duplicate send');
  }finally{await context.close();await browser.close();}
