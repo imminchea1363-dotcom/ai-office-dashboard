@@ -48,7 +48,6 @@ const assert = require('node:assert/strict');
  }
  try {
   await page.goto(base);
-  await page.evaluate(()=>{window.__teamStageLog=[];document.addEventListener('dongbaek-manager-stage',e=>window.__teamStageLog.push({workerId:e.detail.workerId,status:e.detail.status}));});
   assert.equal(await page.locator('#db-manual').count(),1,'Manual editor must mount');
   await page.locator('#db-manual summary').click();
   const designManual=page.locator('#db-manual textarea').nth(3);
@@ -56,6 +55,7 @@ const assert = require('node:assert/strict');
   await page.getByRole('button',{name:'매뉴얼 저장'}).click();
   assert.match(await page.locator('#db-manual [role=status]').textContent(),/저장 완료/);
   await page.reload();
+  await page.evaluate(()=>{window.__teamStageLog=[];document.addEventListener('dongbaek-manager-stage',e=>window.__teamStageLog.push({workerId:e.detail.workerId,status:e.detail.status}));});
   await page.locator('#db-manual summary').click();
   assert.match(await page.locator('#db-manual textarea').nth(3).inputValue(),/가격은 대표 승인/);
   assert.equal(await page.locator('#db-manager-photo').count(),1,'Poster photo selector must be mounted on load');
