@@ -4,7 +4,10 @@
 'use strict';
 const LABEL={approval_pending:'대표 승인 대기',needs_review:'무효·차단 기록 있음 (현재 작업 여부 미확인)',approved_history:'승인 기록 있음',no_active_queue:'진행 중인 승인 업무 없음'};
 const NAMES=['임채리 대리','조사·기획팀 직원','임민채 대리','영상·디자인팀 직원 1','영상·디자인팀 직원 2','SNS 운영팀장','SNS 운영팀 직원','김검수','검수·성과팀 직원','동백매니저'];
-let url='',token='',timer=null,last=null;
+// These are confirmed *different* identities in the visual office, not matching numeric IDs.
+const HERMES_TO_OFFICE=Object.freeze({staff01:2,staff03:3,staff06:8,staff08:4,staff10:1});
+let url='',token='',timer=null,last=null,source='manual';
+
 function el(tag,text=''){const n=document.createElement(tag);n.textContent=text;return n;}
 const box=el('section');box.id='dongbaeg-hermes-status';box.style.cssText='position:fixed;right:14px;bottom:14px;z-index:9999;max-width:min(96vw,400px);font:13px/1.6 system-ui,Arial;color:#243a2a';
 const show=el('button','Hermes 실제 업무 상태');show.type='button';show.style.cssText='padding:10px 14px;background:#336b4c;color:white;border:0;border-radius:9px;cursor:pointer';
@@ -29,18 +32,37 @@ if(!w||!/^staff(0[1-9]|10)$/.test(w.id)||ids.has(w.id)||!Object.hasOwn(LABEL,w.s
 ids.add(w.id);
 for(const k of ['pending','approved','rejected','stale','blocked'])if(!Number.isSafeInteger(w[k])||w[k]<0||w[k]>5000)throw Error('업무 집계 확인 실패');
 }}
-function render(data,origin,age){verify(data);last=data;roster.replaceChildren();
+function paintOfficeRoster(){
+ const root=document.getElementById('db-roster');
+ if(!root)return;
+ root.querySelectorAll('[data-hermes-note]').forEach(node=>node.remove());
+ if(!last)return;
+ for(const worker of last.workers){
+  const id=HERMES_TO_OFFICE[worker.id];
+  if(!id)continue; // No guessed link for an unverified employee identity.
+  const item=root.querySelector('[data-worker="'+id+'"] .db-worker-info');
+  if(!item)continue;
+  const active=source==='live'&&worker.pending>0;
+  const label=active?'Hermes 실제 승인 대기 '+worker.pending+'건':
+   'Hermes 승인 기록 '+worker.approved+'건 · 무효 이력 '+(worker.stale+worker.blocked)+'건';
+  const line=el('small',label);line.dataset.hermesNote='1';
+  line.style.cssText='display:block;color:'+ (active?'#825019':'#5e7365') +';font-size:10px;margin-top:3px';
+  item.append(line);
+ }
+}
+function render(data,origin,age){verify(data);last=data;source=origin==='Hermes 전달 기록'?'live':'manual';roster.replaceChildren();
 for(const w of data.workers){const item=el('div');item.style.cssText='padding:5px 0;border-bottom:1px solid #e8eee5';
 const head=el('strong',NAMES[Number(w.id.substring(5))-1]+' · '+LABEL[w.state]);
 const sub=el('div',`승인 대기 ${w.pending} / 승인 기록 ${w.approved} / 무효·차단 이력 ${w.stale+w.blocked}`);sub.style.cssText='font-size:11px;color:#657866';
 item.append(head,sub);roster.append(item);}
 status.textContent=origin+' · '+new Date(data.captured_at*1000).toLocaleString('ko-KR')+(age===undefined?'':` · ${age}초 전`);
+ paintOfficeRoster();
 }
 function stop(){if(timer)clearInterval(timer);timer=null;url='';token='';secret.value='';}
 async function poll(){if(!url||!token||document.hidden)return;
 try{const r=await fetch(url,{headers:{Authorization:'Bearer '+token},cache:'no-store',redirect:'error',signal:AbortSignal.timeout(10000)});
 if(!r.ok)throw Error('HTTP '+r.status);const data=await r.json();
-if(!data.connected){status.textContent=data.stale?'전송이 3분 이상 끊겼습니다. 최신 상태 아님':'휴대폰의 첫 전송을 기다립니다.';return;}
+if(!data.connected){source='stale';paintOfficeRoster();status.textContent=data.stale?'전송이 3분 이상 끊겼습니다. 최신 상태 아님':'휴대폰의 첫 전송을 기다립니다.';return;}
 render(data.snapshot,'Hermes 전달 기록',data.age_seconds);
 }catch(err){status.textContent='자동 조회 오류: '+String(err.message).slice(0,100);}}
 file.addEventListener('change',async()=>{
@@ -51,10 +73,11 @@ if(parsed.protocol!=='https:'||parsed.username||parsed.password||parsed.search||
 if(entered.length<32)throw Error('조회 토큰이 필요합니다.');
 url=parsed.href;token=entered;status.textContent='조회 연결 시도';poll();timer=setInterval(poll,15000);
 }catch(err){status.textContent='연결 실패: '+String(err.message).slice(0,100);}});
-disconnect.addEventListener('click',()=>{stop();status.textContent='연결 해제 · 표시된 기록은 과거 상태';});
+disconnect.addEventListener('click',()=>{stop();source='stale';paintOfficeRoster();status.textContent='연결 해제 · 표시된 기록은 과거 상태';});
 show.addEventListener('click',()=>{panel.hidden=!panel.hidden;show.setAttribute('aria-expanded',String(!panel.hidden));});
 show.setAttribute('aria-expanded','false');
 panel.append(title,note,status,roster,fileLabel,file,addressLabel,address,tokenLabel,secret,connect,disconnect);box.append(panel,show);
+document.addEventListener('dongbaek-scene',paintOfficeRoster);
 const mount=()=>document.body.append(box);
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
 window.DongbaegHermesBridge=Object.freeze({connected:()=>!!timer,snapshot:()=>last?structuredClone(last):null,disconnect:stop});
