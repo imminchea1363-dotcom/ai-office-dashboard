@@ -2,7 +2,7 @@ name: Check GPT Cloudflare runtime
 on:
   push:
     branches: [main, codex/gpt-runtime-fix-20261022]
-    paths: ['server/**', 'tests/gpt-workerd.cjs', '.github/workflows/gpt-runtime.yml']
+    paths: ['server/**', 'tests/gpt-workerd.cjs', 'tests/hermes-queue.test.mjs', '.github/workflows/gpt-runtime.yml']
   pull_request:
     paths: ['server/**', 'tests/gpt-workerd.cjs', '.github/workflows/gpt-runtime.yml']
 permissions:
