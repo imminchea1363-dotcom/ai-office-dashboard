@@ -46,7 +46,7 @@
  const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(records.slice(0,20)));return true;}catch{return false;}};
  function render(){
   const entries=$('db-hermes-entries');entries.replaceChildren();
-  if(!records.length){const p=document.createElement('p');p.textContent='아직 접수한 업무가 없습니다.';entries.append(p);return;}
+  if(!records.length){const p=document.createElement('p');p.textContent='아직 접수한 업무가 없습니다.';entries.append(p);document.dispatchEvent(new CustomEvent('dongbaek-hermes-queue',{detail:{jobs:[]}}));return;}
   for(const job of records){
    const article=document.createElement('article');article.dataset.hermesId=job.id;
    const info=document.createElement('div'),strong=document.createElement('strong'),small=document.createElement('small');
@@ -72,6 +72,7 @@
    if(job.result&&job.status==='completed'){const details=document.createElement('details');details.style.width='100%';const summary=document.createElement('summary');summary.textContent='받은 결과 보기';const pre=document.createElement('pre');pre.style.whiteSpace='pre-wrap';pre.textContent=job.result;details.append(summary,pre);article.append(details);}
    entries.append(article);
   }
+  document.dispatchEvent(new CustomEvent('dongbaek-hermes-queue',{detail:{jobs:records.map(j=>({id:j.id,staffId:j.staffId,title:j.title,status:j.status}))}}));
  }
  async function call(path,body,access){
   const controller=new AbortController(),handle=setTimeout(()=>controller.abort(),20000);
