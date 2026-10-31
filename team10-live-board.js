@@ -90,7 +90,7 @@
   });
   window.DongbaekTeam10Live=Object.freeze({snapshot:()=>model.roster.map(p=>{
     const job=bestJob(visibleJobs(),p.id);
-    return {id:p.id,name:p.name,status:labelFor(p,job),taskId:job?.id||null,source:job?.gpt?'gpt':'manual'};
+    return {id:p.id,name:p.name,status:labelFor(p,job),taskId:job?.id||null,source:job?(job.gpt?'gpt':'manual'):null};
   })});
   render();
 })();
