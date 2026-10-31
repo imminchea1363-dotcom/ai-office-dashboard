@@ -204,7 +204,8 @@
     } else {
      part.attempted = true;
      if (!saveManager()) throw new Error('진행 기록을 저장하지 못했습니다. GPT 호출은 보내지 않았습니다.');
-     response = await call('/api/jobs', { id: part.id, ...task });
+     const roleIds=record.design?[1,2,3,4,1]:[1,2,4,1];
+     response = await call('/api/jobs', { id: part.id, staffId:roleIds[index],provider:'chatgpt',...task });
     }
     part.result = typeof response.result === 'string' ? response.result.slice(0, 5000) : '';
     if (!part.result) throw new Error('GPT 결과가 비어 있어 다음 직원에게 전달하지 않았습니다.');
