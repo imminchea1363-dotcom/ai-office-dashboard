@@ -116,11 +116,25 @@ def submit(filepath, status):
     print("The draft still requires review and was not published.")
 
 
+def verify():
+    task = read_claim()
+    response = api("/api/hermes/agent/status",
+                   {"id": task["id"], "claimToken": task["claimToken"]})
+    if response.get("id") != task["id"]:
+        raise RuntimeError("Server response does not match the saved task")
+    if response.get("received") is True and response.get("status") in ("completed", "failed"):
+        STATE.unlink()
+        print("Previously submitted result confirmed on server. Local claim cleared.")
+    else:
+        print("Task is not finished on the server. Keep the claim and do not re-execute it.")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Dongbaek Hermes mailbox: manual approval pilot")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("claim", help="Claim exactly one queued task, without executing it")
     sub.add_parser("show", help="Show the saved task; do not reveal the claim token")
+    sub.add_parser("verify", help="Safely check an uncertain result submission without repeating work")
     submit_parser = sub.add_parser("submit", help="Return a manually reviewed result")
     submit_parser.add_argument("--file", required=True, help="UTF-8 text file with result")
     submit_parser.add_argument("--status", choices=["completed", "failed"], default="completed")
@@ -130,6 +144,8 @@ def main():
             claim()
         elif args.command == "show":
             show()
+        elif args.command == "verify":
+            verify()
         else:
             submit(args.file, args.status)
     except (RuntimeError, ValueError, OSError, KeyError, json.JSONDecodeError) as error:
