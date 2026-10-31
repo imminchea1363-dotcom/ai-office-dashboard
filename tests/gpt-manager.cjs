@@ -48,6 +48,7 @@ const assert = require('node:assert/strict');
  }
  try {
   await page.goto(base);
+  await page.evaluate(()=>{window.__teamStageLog=[];document.addEventListener('dongbaek-manager-stage',e=>window.__teamStageLog.push({workerId:e.detail.workerId,status:e.detail.status}));});
   assert.equal(await page.locator('#db-manual').count(),1,'Manual editor must mount');
   await page.locator('#db-manual summary').click();
   const designManual=page.locator('#db-manual textarea').nth(3);
@@ -84,6 +85,7 @@ const assert = require('node:assert/strict');
   try { await page.waitForFunction(() => document.querySelector('#db-gpt-status').textContent.includes('총괄 보고서 작성 완료'),null,{timeout:10000}); }
   catch(e) {throw new Error('Manager status: '+await page.locator('#db-gpt-status').textContent()+'; writes='+JSON.stringify(writes.map(x=>x.title))+'; errors='+JSON.stringify(errors)+'; original='+e.message);}
   assert.equal(writes.length,4);
+  assert.deepEqual(await page.evaluate(()=>window.__teamStageLog.filter(x=>x.status==='running').map(x=>x.workerId)),[1,2,4,1],'Live board receives each real manager stage');
   assert.deepEqual(writes.map(w=>w.title),[
    '동백총괄매니저 · 직원별 업무 배정',
    '임채리사원 · 자료조사 업무',
@@ -143,6 +145,7 @@ const assert = require('node:assert/strict');
   await page.selectOption('#db-new-poster-layout','collage');
   await page.locator('#db-manager-photo-panel [data-photo-pick="1"]').click();
   assert.equal(await page.locator('#db-manager-photo-panel [data-photo-pick="1"]').getAttribute('aria-pressed'),'true','second image selected');
+  await page.evaluate(()=>{window.__teamStageLog=[];document.addEventListener('dongbaek-manager-stage',e=>window.__teamStageLog.push({workerId:e.detail.workerId,status:e.detail.status}));});
   await page.fill('#db-manager-quick-title','동백팬션 디자인 썸네일');
   await page.fill('#db-manager-quick-brief','반려견과 바다 전망을 강조한 SNS 썸네일 디자인 기획안을 만들어 주세요.');
   assert.match(await page.locator('#db-manager-quick-run').textContent(),/5회/);
@@ -151,6 +154,7 @@ const assert = require('node:assert/strict');
   catch(e){throw Error('Multi-photo design status: '+await page.locator('#db-manager-quick-progress').textContent()+'; gpt: '+await page.locator('#db-gpt-status').textContent()+'; page errors: '+JSON.stringify(errors)+'; '+e.message);}
   assert.match(writes[10].brief,/가격은 대표 승인 후 기재/,'Designer prompt must include saved manual after reload');
   assert.doesNotMatch(writes[9].brief,/가격은 대표 승인 후 기재/,'Research prompt must not receive design-only rule');
+  assert.deepEqual(await page.evaluate(()=>window.__teamStageLog.filter(x=>x.status==='running').map(x=>x.workerId)),[1,2,3,4,1],'Live board receives five design stage assignments');
   assert.equal(writes.length,13,'Design task requires 5 calls: status='+await page.locator('#db-gpt-status').textContent()+'; quick='+await page.locator('#db-manager-quick-progress').textContent()+'; errors='+JSON.stringify(errors));
   assert.deepEqual(writes.slice(8).map(w=>w.title),[
     '동백총괄매니저 · 직원별 업무 배정',
