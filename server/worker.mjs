@@ -1,3 +1,4 @@
+import {handlePhone1Presence,isPhone1PresenceAgentPath,isPhone1PresenceOfficePath} from './phone1-presence.mjs';
 import {handlePhone1Inbox,isPhoneAgentPath,isPhoneOfficePath} from './phone1-inbox.mjs';
 import {handleHermesQueue,isHermesAgentPath,isHermesOfficePath} from './hermes-queue.mjs';
 /* Cloudflare Worker. Secrets belong in Cloudflare, never in this repository. */
@@ -81,12 +82,14 @@ export default {
   if (request.method === 'GET' && url.pathname === '/health') return json({ service: 'dongbaek-gpt', version: 2, ready: Boolean(configured(env)) }, 200, origin);
   if (isHermesAgentPath(url.pathname)) return handleHermesQueue(request,env);
   if (isPhoneAgentPath(url.pathname)) return handlePhone1Inbox(request,env);
+  if (isPhone1PresenceAgentPath(url.pathname)) return handlePhone1Presence(request,env);
   if (origin !== ORIGIN) return json({ error: 'origin_denied', message: '동백사무실에서 접속해 주세요.' }, 403);
   if (request.method === 'OPTIONS') {
    return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': ORIGIN, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '600', Vary: 'Origin' } });
   }
   if (isHermesOfficePath(url.pathname)) return handleHermesQueue(request,env);
   if (isPhoneOfficePath(url.pathname)) return handlePhone1Inbox(request,env);
+  if (isPhone1PresenceOfficePath(url.pathname)) return handlePhone1Presence(request,env);
   try {
    if (!['/api/status', '/api/jobs', '/api/result'].includes(url.pathname)) throw new Failure(404, 'not_found', '요청한 기능이 없습니다.');
    if (!configured(env)) throw new Failure(503, 'not_configured', '서버의 API 키, 사무실 접속 암호, DB 연결을 확인해 주세요.');
