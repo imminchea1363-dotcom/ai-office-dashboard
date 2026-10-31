@@ -1,3 +1,4 @@
+import {handleHermesQueue,isHermesAgentPath,isHermesOfficePath} from './hermes-queue.mjs';
 /* Cloudflare Worker. Secrets belong in Cloudflare, never in this repository. */
 const ORIGIN = 'https://imminchea1363-dotcom.github.io';
 const MODEL = 'gpt-4.1-mini';
@@ -77,10 +78,12 @@ export default {
  async fetch(request, env) {
   const url = new URL(request.url), origin = request.headers.get('Origin') || '';
   if (request.method === 'GET' && url.pathname === '/health') return json({ service: 'dongbaek-gpt', version: 2, ready: Boolean(configured(env)) }, 200, origin);
+  if (isHermesAgentPath(url.pathname)) return handleHermesQueue(request,env);
   if (origin !== ORIGIN) return json({ error: 'origin_denied', message: '동백사무실에서 접속해 주세요.' }, 403);
   if (request.method === 'OPTIONS') {
    return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': ORIGIN, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '600', Vary: 'Origin' } });
   }
+  if (isHermesOfficePath(url.pathname)) return handleHermesQueue(request,env);
   try {
    if (!['/api/status', '/api/jobs', '/api/result'].includes(url.pathname)) throw new Failure(404, 'not_found', '요청한 기능이 없습니다.');
    if (!configured(env)) throw new Failure(503, 'not_configured', '서버의 API 키, 사무실 접속 암호, DB 연결을 확인해 주세요.');
