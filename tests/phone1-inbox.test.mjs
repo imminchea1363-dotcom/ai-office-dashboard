@@ -51,7 +51,7 @@ test('phone1 Hermes dispatches to office and receives independently reviewed dra
   r=await worker.fetch(office('/api/phone1/inbox?id='+t.id),env);assert.equal((await r.json()).task.title,t.title);
   r=await worker.fetch(agent('/api/phone1/agent/status?id='+t.id),env);
   let state=await r.json();assert.equal(state.status,'queued');assert.equal(state.brief,undefined);assert.equal(state.result,null);
-  r=await worker.fetch(agent('/api/phone1/inbox/result',{id:t.id,status:'draft_ready',result:'forbidden'}),env);assert.equal(r.status,405);
+  r=await worker.fetch(agent('/api/phone1/inbox/result',{id:t.id,status:'draft_ready',result:'forbidden'}),env);assert.equal(r.status,403);
   const deliver={id:t.id,status:'draft_ready',result:'검수 전 홍보 문구 초안. 게시 미승인.'};
   r=await worker.fetch(office('/api/phone1/inbox/result',deliver),env);assert.equal(r.status,200);
   assert.equal((await r.json()).reviewStatus,'pending');
