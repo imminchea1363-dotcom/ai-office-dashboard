@@ -33,6 +33,7 @@ jobs:
       - name: Check and build review files
         run: |
           npm run check
+          node tests/team10-state.cjs
           npm run test:gpt-server
           npm run build:pwa
           npm run export
