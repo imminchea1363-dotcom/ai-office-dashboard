@@ -14,8 +14,8 @@ const password = 'mock-only-office-access-password-24';
  let calls=0;
  const outbound=createFetchMock();outbound.disableNetConnect();
  outbound.get('https://api.openai.com').intercept({path:'/v1/responses',method:'POST'}).reply(200,()=>{calls++;return JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'모의 GPT 결과'}]}],usage:{input_tokens:10,output_tokens:10}});}).persist();
- const source=fs.readFileSync(path.join(__dirname,'../server/worker.mjs'),'utf8');
- const runtime=new Miniflare({ modules:true, compatibilityDate:'2026-08-01',script:source,fetchMock:outbound,d1Databases:['DB'],bindings:{OPENAI_API_KEY:'sk-mock-not-a-real-key',OFFICE_ACCESS_TOKEN:password},log:new Log(LogLevel.INFO) });
+ const scriptPath=path.join(__dirname,'../server/worker.mjs');
+ const runtime=new Miniflare({ modules:true, compatibilityDate:'2026-08-01',scriptPath,fetchMock:outbound,d1Databases:['DB'],bindings:{OPENAI_API_KEY:'sk-mock-not-a-real-key',OFFICE_ACCESS_TOKEN:password},log:new Log(LogLevel.INFO) });
  const headers={Origin:origin,Authorization:'Bearer '+password,'Content-Type':'application/json'};
  try {
   let r=await runtime.dispatchFetch('https://worker.test/api/status',{headers});assert.equal(r.status,200);console.log('RUNTIME_STATUS '+await r.text());
