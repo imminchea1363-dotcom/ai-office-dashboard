@@ -7,9 +7,9 @@ import zipfile
 
 root = Path(__file__).resolve().parents[1]
 output = root / 'dist' / 'dongbaek-pwa'
-files = ['index.html', 'characters.js', 'pixel-mode.js', 'v3.js', 'radio.js','gym-music.js', 'office-music.js', 'docx-export.js', 'ai-desk.js', 'poster-studio.js', 'office-manual.js', 'office-archive.js', 'office-sns.js', 'video-library.js', 'video-studio.js', 'gpt-desk.js', 'pwa.js', 'manifest.webmanifest',
+files = ['index.html', 'characters.js', 'pixel-mode.js', 'v3.js', 'radio.js','gym-music.js', 'office-music.js', 'docx-export.js', 'ai-desk.js', 'poster-studio.js', 'office-manual.js', 'office-archive.js', 'office-sns.js', 'video-library.js', 'video-studio.js', 'video-ai.js', 'gpt-desk.js', 'pwa.js', 'manifest.webmanifest',
          'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png',
-         'assets/office-pixel.png','assets/office-background.png','assets/lobby-background.png','assets/gym-background.png','assets/characters-standing.png','assets/characters-working.png','assets/characters-gym.png','assets/characters-cleaner.png','assets/characters-coffee.png']
+         'assets/office-pixel.png','assets/office-background.png','assets/illustrated-team-office.png','assets/lobby-background.png','assets/gym-background.png','assets/characters-standing.png','assets/characters-working.png','assets/characters-gym.png','assets/characters-cleaner.png','assets/characters-coffee.png']
 output.mkdir(parents=True, exist_ok=True)
 digest = hashlib.sha256()
 for name in files:

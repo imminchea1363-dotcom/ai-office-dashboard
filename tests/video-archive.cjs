@@ -16,7 +16,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
   await page.evaluate(()=>DongbaegVideoLibrary.replaceAll([]));
   assert.equal(await page.evaluate(()=>DongbaegVideoLibrary.list().then(r=>r.length)),0);
   await page.locator('#db-archive-import').setInputFiles({name:'backup.json',mimeType:'application/json',buffer:bytes});
-  await page.click('#db-archive-restore');
+  await Promise.all([page.waitForNavigation({waitUntil:'load'}),page.click('#db-archive-restore')]);
   await page.waitForFunction(async id=>Boolean(await DongbaegVideoLibrary.get(id)),id,{timeout:15000});
   const restored=await page.evaluate(async id=>{const x=await DongbaegVideoLibrary.get(id);return {name:x.title,caption:x.cuts[0].caption,size:x.blob.size};},id);
   assert.deepEqual(restored,{name:'백업용 동백 영상',caption:'바다 풍경',size:2048});

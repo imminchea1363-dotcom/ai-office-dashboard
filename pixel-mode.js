@@ -1,12 +1,17 @@
 /* Original pixel-art renderer. Shares the simulation's single location/state model. */
 (() => {
 'use strict';
+window.DongbaekIllustratedOffice=window.DongbaekIllustratedOffice||'assets/illustrated-team-office.png';
 const E=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const project=(u,v,z=0)=>currentView==='director'?[1050+(u-390)*1.6,450+(v-315)*1.2-z]:[135+u*1.35,210+v*.82-z];
 const at=(u,v,z,html)=>{const [x,y]=project(u,v,z);return `<g transform="translate(${x} ${y})">${html}</g>`;};
 const rect=(x,y,w,h,fill,stroke='',sw=3)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" ${stroke?`stroke="${stroke}" stroke-width="${sw}"`:''}/>`;
 const label=(x,y,text,w=190)=>`<g transform="translate(${x} ${y})">${rect(-w/2,-13,w,28,'#fff2cb','#77633d',2)}<text y="6" text-anchor="middle" font-size="13" fill="#55472f">${E(text)}</text></g>`;
-const desks=[[475,87],[188,167],[275,52],[475,252],[630,160],[635,355]];
+// Staff seats share a coordinate system with the desks and four partitioned team zones.
+// 1: manager; 2/5: research; 3/6/7: video; 8/9: SNS; 4/10: review.
+// Seat anchors follow the preserved painted office: 1 manager, 2/5 research,
+// 3/6/7 video, 8/9 SNS, 4/10 quality. These do not draw new furniture.
+const desks=[[411,216],[37,390],[335,346],[686,599],[124,661],[465,405],[580,470],[693,151],[789,305],[809,758]];
 function plant(u,v){return at(u,v,0,`${rect(-17,-9,34,25,'#e1cf9c','#77633e')}${rect(-12,-4,24,15,'#f4e4b9')}${rect(-3,-58,6,48,'#597945')}${rect(-19,-45,18,13,'#749552')}${rect(1,-60,19,13,'#86a65c')}${rect(-16,-71,16,15,'#90ad64')}${rect(3,-34,18,12,'#63884b')}`);}
 function chair(u,v){return at(u,v,0,`${rect(-4,-10,8,22,'#596b56')}${rect(-27,8,54,5,'#535e4b')}${rect(-3,10,6,10,'#535e4b')}${rect(-26,-57,52,47,'#315b49','#213d32')}${rect(-20,-50,40,31,'#50785d')}${rect(-27,-18,54,13,'#456c52','#284735',2)}`);}
 function table(u,v,w=150){return at(u,v,0,`${rect(4,-48,w*1.35,48,'#9e7950','#654e36')}${rect(0,-60,w*1.35,29,'#e4c99a','#715938')}${rect(12,-24,9,36,'#776044')}${rect(w*1.35-17,-24,9,36,'#776044')}`);}
@@ -26,7 +31,7 @@ function executiveDesk(u,v){return at(u,v,0,`
 `);}
 function sofa(u,v,w=180){return at(u,v,0,`${rect(-4,-58,w*1.35+8,67,'#294d39','#233d2d')}${rect(4,-50,w*1.35-8,37,'#436b4d')}${rect(8,-9,w*1.35-16,20,'#527c59')}${rect(9,-46,48,30,'#8b9b64')}${rect(w*1.35-57,-46,43,30,'#c4c092')}${rect(8,10,10,13,'#594a35')}${rect(w*1.35-21,10,10,13,'#594a35')}`);}
 function elevator(){return at(705,25,0,`${rect(-61,-145,122,160,'#504f43','#312f28',5)}${rect(-50,-134,100,140,'#537163','#374a40')}${rect(-45,-125,40,115,'#799486')}${rect(5,-125,40,115,'#799486')}${rect(-4,-135,8,141,'#40584b')}${rect(-22,-179,44,25,'#2e4337','#8a9c75',2)}<text y="-161" text-anchor="middle" font-size="13" fill="#e4d39b">↕</text>`);}
-function room(view){if(['gym','lobby'].includes(view))return `<image data-room-art="${view}" href="${window.DongbaekAssets?.['assets/'+view+'-background.png']||'assets/'+view+'-background.png'}" x="0" y="0" width="1350" height="975" preserveAspectRatio="none"/>`;if(['director','pantry','roof'].includes(view)){const crop={director:'970 465 380 380',pantry:'280 0 750 560',roof:'0 300 600 440'}[view];return `<svg width="1350" height="975" viewBox="${crop}" preserveAspectRatio="xMidYMid slice"><image href="${window.DongbaekBackground||'assets/office-background.png'}" width="1350" height="975" preserveAspectRatio="none"/></svg>`;}if(view==='office')return atriumRoom();let s=`<defs><pattern id="db-pixel-planks" width="180" height="50" patternUnits="userSpaceOnUse">${rect(0,0,180,50,'#b98251')}${rect(0,0,180,3,'#8d633e')}${rect(0,46,180,4,'#96633d')}${rect(6,9,66,2,'#c59661')}${rect(90,31,72,2,'#c59661')}${rect(85,0,3,25,'#9d6c43')}${rect(27,25,3,25,'#9d6c43')}</pattern></defs>`;
+function room(view){if(view==='gym')return `<image data-room-art="${view}" href="${window.DongbaekAssets?.['assets/'+view+'-background.png']||'assets/'+view+'-background.png'}" x="0" y="0" width="1350" height="975" preserveAspectRatio="none"/>`;if(view==='roof')return rooftopRoom();if(['director','pantry'].includes(view)){const crop={director:'720 380 630 455',pantry:'280 0 750 560',roof:'0 300 600 440'}[view];return `<svg width="1350" height="975" viewBox="${crop}" preserveAspectRatio="xMidYMid slice"><image href="${window.DongbaekBackground||'assets/office-background.png'}" width="1350" height="975" preserveAspectRatio="none"/></svg>`;}if(view==='office')return atriumRoom();let s=`<defs><pattern id="db-pixel-planks" width="180" height="50" patternUnits="userSpaceOnUse">${rect(0,0,180,50,'#b98251')}${rect(0,0,180,3,'#8d633e')}${rect(0,46,180,4,'#96633d')}${rect(6,9,66,2,'#c59661')}${rect(90,31,72,2,'#c59661')}${rect(85,0,3,25,'#9d6c43')}${rect(27,25,3,25,'#9d6c43')}</pattern></defs>`;
 s+=rect(116,181,1118,712,'#292f28')+rect(128,194,1094,682,view==='roof'?'#8aab67':'url(#db-pixel-planks)','#d7bf80',5);
 if(view==='roof'){
 s+=rect(145,214,1058,640,'#9ab976','#67814c',5);for(let i=0;i<9;i++)s+=rect(175+i*125,213,5,640,'#90b16b');s+=rect(128,171,1094,29,'#b6c7a1','#657851')+rect(128,200,18,677,'#b6c7a1')+rect(1205,200,18,677,'#b6c7a1')+rect(128,863,1094,16,'#b6c7a1');return s+elevator();}
@@ -35,7 +40,53 @@ for(let y=84;y<194;y+=22){s+=rect(131,y,1088,3,'#b1815b');for(let x=132+(y%44?0:
 for(let x=155;x<1045;x+=222){s+=rect(x,91,204,100,'#263f36','#cfbb88',4)+rect(x+6,97,192,87,'#83a69e');for(let j=0;j<5;j++)s+=rect(x+12+j*38,144-j%3*10,24,40+j%3*10,'#597e77');for(let k=1;k<4;k++)s+=rect(x+k*51,94,5,94,'#334f43');s+=rect(x+3,137,197,5,'#334f43');}
 s+=rect(120,870,1112,26,'#5d715e','#313e32',3)+rect(120,884,1112,8,'#a4b9a0');
 return s+elevator()+label(670,57,'주식회사 동백 · PIXEL OFFICE',340);}
-function atriumRoom(){return `<image data-live-background="true" href="${window.DongbaekBackground||'assets/office-background.png'}" x="0" y="0" width="1350" height="975" preserveAspectRatio="none"/>`; }
+function rooftopRoom(){
+ const rails=Array.from({length:15},(_,i)=>'<rect x="'+(52+i*86)+'" y="175" width="9" height="85" fill="#816c4f"/>').join('');
+ return '<defs><linearGradient id="roof-sky" x2="0" y2="1"><stop stop-color="#c0dfd9"/><stop offset="1" stop-color="#f6e3ba"/></linearGradient><linearGradient id="roof-grass" x2="0" y2="1"><stop stop-color="#a0c29a"/><stop offset="1" stop-color="#d0d9a5"/></linearGradient><pattern id="roof-wood" width="96" height="44" patternUnits="userSpaceOnUse"><rect width="96" height="44" fill="#caa374"/><path d="M0 0H96M0 42H96M48 0V42" stroke="#ad8759" stroke-width="3"/></pattern></defs>'
+ +'<rect width="1350" height="975" fill="url(#roof-sky)"/>'
+ +'<path d="M0 255Q110 203 330 253T740 235T1160 240T1350 255V345H0Z" fill="#86aca1" opacity=".68"/>'
+ +'<rect x="37" y="168" width="1270" height="774" rx="30" fill="#efdfbe" stroke="#947b59" stroke-width="8"/>'
+ +'<rect x="54" y="197" width="1234" height="728" rx="22" fill="url(#roof-wood)"/>'
+ +rails+'<path d="M49 179H1302M49 251H1302" stroke="#8b7454" stroke-width="9"/>'
+ +'<rect x="77" y="281" width="720" height="615" rx="36" fill="url(#roof-grass)" stroke="#749873" stroke-width="8"/>'
+ +'<rect x="829" y="281" width="423" height="615" rx="30" fill="#e7d8bb" stroke="#ad9673" stroke-width="8"/>'
+ +'<rect x="800" y="286" width="12" height="601" fill="#ac946c"/>'
+ +'<rect x="106" y="298" width="365" height="50" rx="12" fill="#fff9ea" stroke="#7c9a78" stroke-width="3"/>'
+ +'<text x="289" y="330" font-size="24" font-weight="700" text-anchor="middle" fill="#43654d">🐾 동백이 전용 정원</text>'
+ +'<rect x="849" y="301" width="380" height="51" rx="12" fill="#fff8e9" stroke="#9d8665" stroke-width="3"/>'
+ +'<text x="1040" y="333" font-size="23" font-weight="700" text-anchor="middle" fill="#745c41">직원 보조 휴식 공간</text>'
+ +'<g fill="#83ab77"><circle cx="128" cy="392" r="33"/><circle cx="728" cy="383" r="38"/><circle cx="144" cy="856" r="30"/><circle cx="737" cy="857" r="28"/></g>'
+ +'<text x="675" y="94" font-size="36" text-anchor="middle" font-weight="750" fill="#395d54">주식회사 동백 · ROOFTOP GARDEN</text>';
+}
+function rooftopFurniture(){
+ return '<g data-rooftop-furniture="dongbaek">'
+ +'<rect x="184" y="428" width="187" height="161" rx="15" fill="#b48858" stroke="#775638" stroke-width="7"/>'
+ +'<path d="M154 435L277 347L400 435Z" fill="#5f8960" stroke="#406543" stroke-width="9"/>'
+ +'<rect x="237" y="491" width="87" height="98" rx="43" fill="#67513a"/>'
+ +'<text x="275" y="628" text-anchor="middle" font-size="22" fill="#476049">동백이 집</text>'
+ +'<ellipse cx="548" cy="752" rx="144" ry="68" fill="#688d76" stroke="#4d705e" stroke-width="8"/>'
+ +'<ellipse cx="548" cy="737" rx="118" ry="43" fill="#eddfba"/>'
+ +'<g><path d="M266 796H361L349 825Q311 840 282 825Z" fill="#bd9668" stroke="#80684e" stroke-width="4"/>'
+ +'<ellipse cx="313" cy="796" rx="46" ry="11" fill="#79593d"/><text x="315" y="864" text-anchor="middle" font-size="17" fill="#476049">밥그릇</text>'
+ +'<path d="M379 843H475L460 872Q420 888 393 872Z" fill="#b4d3d0" stroke="#719a93" stroke-width="4"/>'
+ +'<ellipse cx="427" cy="843" rx="48" ry="12" fill="#6eb6c4"/><text x="427" y="909" text-anchor="middle" font-size="17" fill="#476049">물그릇</text></g>'
+ +'<circle cx="688" cy="812" r="19" fill="#dbb36d" stroke="#ae8b50" stroke-width="3"/>'
+ +'</g><g data-rooftop-furniture="staff-lounge">'
+ +'<rect x="865" y="474" width="344" height="35" rx="12" fill="#a7bf9a" stroke="#758f78" stroke-width="5"/>'
+ +'<rect x="880" y="508" width="14" height="45" fill="#8a7356"/><rect x="1180" y="508" width="14" height="45" fill="#8a7356"/>'
+ +'<rect x="860" y="733" width="350" height="36" rx="11" fill="#bba17a" stroke="#876b4f" stroke-width="5"/>'
+ +'<rect x="882" y="767" width="14" height="49" fill="#8c7459"/><rect x="1186" y="767" width="14" height="49" fill="#8c7459"/>'
+ +'<ellipse cx="1039" cy="833" rx="92" ry="24" fill="#a99573"/>'
+ +'<rect x="994" y="785" width="89" height="47" rx="8" fill="#e1c9a1" stroke="#9c805b" stroke-width="4"/>'
+ +'<circle cx="1024" cy="779" r="11" fill="#fff6e7"/><circle cx="1063" cy="779" r="11" fill="#fff6e7"/>'
+ +'<text x="1038" y="910" font-size="18" text-anchor="middle" fill="#705c47">휴식 좌석 4개 · 간단한 차와 대화</text>'
+ +'</g>';
+}
+function atriumRoom(){
+ // Approved four-team artwork; staff actors are interactive overlays (not duplicate sprites).
+ const art=window.DongbaekIllustratedOffice||'assets/illustrated-team-office.png';
+ return '<image data-illustrated-office="true" href="'+art+'" x="0" y="0" width="1350" height="975" preserveAspectRatio="none"/>';
+}
 function legacyAtriumRoom(){
  let s=`<defs><pattern id="db-atrium-ash" width="150" height="48" patternUnits="userSpaceOnUse">${rect(0,0,150,48,'#cfab7c')}${rect(0,0,150,2,'#b68f61')}${rect(70,0,2,24,'#bd986b')}${rect(20,24,2,24,'#bd986b')}${rect(8,10,42,2,'#dfbd8c')}</pattern></defs>`;
  s+=rect(116,181,1118,712,'#413b2d')+rect(128,194,1094,682,'url(#db-atrium-ash)','#bdae83',5);
@@ -71,7 +122,7 @@ function atriumFurniture(){
  s+=plant(755,750)+label(248,828,'동백꽃 산책길',155)+label(727,825,'공유 아일랜드 · 집중석',250);
  return s;
 }
-function furnishings(view){if(['office','director','pantry','gym','lobby'].includes(view))return '';if(view==='roof')return '<g opacity="0"><title>동백이 집 · 밥그릇 · 물그릇</title></g>';let s='';
+function furnishings(view){if(['office','director','pantry','gym','lobby'].includes(view))return '';if(view==='roof')return rooftopFurniture();let s='';
 if(view==='office'){
 s+=sofa(80,80,200)+table(365,75,130)+plant(35,130)+plant(620,115);for(let i=0;i<desks.length;i++){const [u,v]=desks[i];s+=chair(u+87,v+142)+desk(u,v,i);}s+=plant(45,750)+plant(760,755);s+=at(690,625,0,`${rect(-45,-95,115,125,'#ab7d4d','#634e33')}${rect(-33,-83,91,99,'#6b8e61')}${rect(-21,-71,67,75,'#e1cda4')}`);
 }else if(view==='director'){

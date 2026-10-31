@@ -5,13 +5,13 @@
  const n=(tag,text)=>{const x=document.createElement(tag);if(text!==undefined)x.textContent=text;return x;};
  const root=n('section');root.id='db-video-studio';root.style.cssText='border:1px solid #b4c7c1;background:#f5faf8;color:#203f37;padding:16px;border-radius:12px;margin:14px 0';
  root.append(n('h3','임민채 대리 · 영상 제작실'));
- root.append(n('p','실제 촬영 사진·영상 최대 5개로 15초 세로 무음 숏폼을 제작합니다. MP4 지원 여부는 브라우저마다 다르며, 지원하지 않으면 WebM으로 출력합니다. 상업음악·자동 게시·외부 AI 서버 전송은 하지 않습니다.'));
+ root.append(n('p','실제 촬영 사진·영상 최대 5개로 15초 무음 세로 영상을 제작합니다. 기본 자막은 삽입하지 않습니다. 영상 장면 분석은 별도 명시 승인과 AI 서버 연결 후에만 실행됩니다.'));
  const form=n('div');form.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:9px';
  const label=(title,input)=>{const l=n('label',title);l.style.cssText='font-size:13px;font-weight:700;display:grid;gap:5px';l.append(input);form.append(l);return l;};
  const sources=n('input');sources.type='file';sources.id='db-video-files';sources.multiple=true;sources.accept='image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime';label('실제 사진·영상 선택 (최대 5개)',sources);
  const title=n('input');title.id='db-video-title';title.maxLength=55;title.placeholder='첫 2초 후킹 문구';label('영상 첫 문구',title);
  const subtitle=n('input');subtitle.id='db-video-subtitle';subtitle.maxLength=70;subtitle.placeholder='평일 낮, 우리만 아는 바다';label('중간 안내 문구',subtitle);
- const cta=n('input');cta.id='db-video-cta';cta.maxLength=85;cta.value='네이버에서 ‘포항 동백팬션’ 검색';label('마지막 3초 CTA',cta);
+ const cta=n('input');cta.id='db-video-cta';cta.maxLength=85;cta.value='';label('마지막 3초 CTA',cta);
  const format=n('select');format.id='db-video-format';
  for(const [value,name] of [['auto','자동 · MP4 우선'],['mp4','MP4 (지원 브라우저만)'],['webm','WebM']]){const opt=n('option',name);opt.value=value;format.append(opt);}
  label('출력 파일 형식',format);
@@ -37,6 +37,13 @@
  const attribution=n('p','사진·동영상은 이 브라우저 안에서만 편집됩니다. 원본은 외부 AI 서버에 보내지 않으며, 제작된 영상은 직접 다운로드해야 보존됩니다.');
  root.append(form,timeline,cutNote,cutEditor,preview,actions,status,canvas,playback,attribution);office.append(root);
  let selected=[],urls=[],run=null,finalUrl=null,completedBlob=null,savedVideoId='',renderedCuts=[];
+ let linkedJobId='',linkedVideoId='';
+ document.addEventListener('dongbaek-video-job-select',event=>{
+  const d=event.detail||{};if(typeof d.jobId!=='string'||d.jobId.length>100||run)return;
+  linkedJobId=d.jobId;linkedVideoId='';resetDownload();
+  title.value=String(d.title||'').slice(0,title.maxLength);
+  status.textContent='영상 업무가 연결됐습니다. 완성 영상을 저장하면 대표실 검수 대기에 등록합니다.';
+ });
  const clean=(v,max)=>String(v||'').replace(/[\u0000-\u001f]/g,' ').trim().slice(0,max);
  const ctx=canvas.getContext('2d');
  const formats={mp4:['video/mp4;codecs=avc1.42E01E','video/mp4'],webm:['video/webm;codecs=vp8','video/webm']};
@@ -67,9 +74,9 @@
   if(asset?.video&&asset.video.readyState>=2)cover(asset.video);
   const shade=ctx.createLinearGradient(0,0,0,640);shade.addColorStop(0,'rgba(0,20,24,.5)');shade.addColorStop(.48,'rgba(0,20,24,.04)');shade.addColorStop(1,'rgba(0,20,24,.9)');ctx.fillStyle=shade;ctx.fillRect(0,0,360,640);
   ctx.strokeStyle='rgba(255,255,255,.7)';ctx.lineWidth=1;ctx.strokeRect(18,18,324,604);
-  if(sec<2)wrapped(title.value||'동백팬션에서 쉬어가요',65,31,3);
-  if(sec>=2&&sec<12)wrapped(asset?.caption||subtitle.value||'바다를 바라보며 즐기는 휴식',455,24,3);
-  if(sec>=12){ctx.fillStyle='rgba(255,247,224,.96)';ctx.fillRect(20,496,320,100);ctx.fillStyle='#17463f';ctx.font='800 19px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillText('예약·상세 안내',180,529);ctx.fillStyle='#17463f';wrapped(cta.value||'네이버에서 포항 동백팬션 검색',552,19,2,'#17463f');}
+  if(sec<2)wrapped(title.value.trim(),65,31,3);
+  if(sec>=2&&sec<12)wrapped(asset?.caption||subtitle.value.trim(),455,24,3);
+  if(sec>=12&&cta.value.trim()){ctx.fillStyle='rgba(255,247,224,.96)';ctx.fillRect(20,496,320,100);ctx.fillStyle='#17463f';ctx.font='800 19px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillText('안내',180,529);wrapped(cta.value.trim(),552,19,2,'#17463f');}
   ctx.fillStyle='rgba(255,255,255,.85)';ctx.fillRect(20,610,320*Math.min(1,sec/15),4);
  }
  function updateTimeline(){
@@ -183,9 +190,13 @@
   const library=window.DongbaegVideoLibrary;
   if(!library)throw Error('영상 보관함을 불러오지 못했습니다.');
   if(savedVideoId){const existing=await library.get(savedVideoId);if(existing)return existing;}
-  const row=await library.save(completedBlob,{title:title.value||'동백팬션 15초 영상',subtitle:subtitle.value,cta:cta.value,
+  const row=await library.save(completedBlob,{title:title.value.trim()||'15초 영상',subtitle:subtitle.value,cta:cta.value,
    width:canvas.width,height:canvas.height,cuts:renderedCuts});
   savedVideoId=row.id;
+  if(linkedJobId&&linkedVideoId!==row.id){
+    linkedVideoId=row.id;
+    document.dispatchEvent(new CustomEvent('dongbaek-video-job-completed',{detail:{jobId:linkedJobId,videoId:row.id}}));
+  }
   return row;
  }
  saveLocal.onclick=async()=>{
@@ -200,6 +211,10 @@
   toSns.disabled=true;
   try{
    const row=await persistVideo();
+   if(linkedJobId){
+    const job=JSON.parse(localStorage.getItem('dongbaek-ai-desk-v1')||'{}').jobs?.find(j=>j.id===linkedJobId);
+    if(!job||job.videoId!==row.id||job.videoReview!=='approved'){status.textContent='대표실에서 완성 영상을 검수 승인한 뒤 SNS 초안으로 연결해 주세요.';return;}
+   }
    document.dispatchEvent(new CustomEvent('dongbaek-video-to-sns',{detail:{videoId:row.id,title:row.title,subtitle:row.subtitle,cta:row.cta}}));
    status.textContent='완성 영상과 SNS 초안을 연결했습니다. 검수 후 대표 승인으로 진행하세요. 실제 SNS 게시가 실행된 것은 아닙니다.';
   }catch(error){status.textContent='SNS 초안 연결 실패: '+(error.message||'영상 저장 공간을 확인하세요.');}
