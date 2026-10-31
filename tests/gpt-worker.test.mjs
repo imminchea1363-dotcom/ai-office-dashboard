@@ -57,6 +57,27 @@ test('security and billing protections use real SQLite, with OpenAI calls mocked
   for (let i = 20; i < 200; i++) env.DB.sqlite.prepare("INSERT INTO gpt_jobs (id,fingerprint,day,status,created) VALUES (?,?,?,'failed',?)").run(crypto.randomUUID(), 'fake', '2000-01-01', Date.now());
   reply = await worker.fetch(request('/api/jobs', task()), env); assert.equal(reply.status, 429); assert.equal((await reply.json()).error, 'pilot_limit'); assert.equal(calls.length, 1);
 
+
+  // The same real OpenAI model is used with distinct, grounded job-role instructions for all ten staff.
+  env = environment(); calls = [];
+  globalThis.fetch = async (url,options)=>{calls.push({url,options});return success();};
+  for(let staffId=1;staffId<=10;staffId++){
+   const one=task({staffId,title:'직원 업무 검증 '+staffId});
+   const got=await worker.fetch(request('/api/jobs',one),env);
+   assert.equal(got.status,200,'staff '+staffId);
+   const outgoing=JSON.parse(calls.at(-1).options.body);
+   assert.equal(outgoing.model,'gpt-4.1-mini');
+   assert.match(outgoing.instructions,/직원별 역할/);
+   assert.ok(outgoing.instructions.length>100);
+   assert.equal(outgoing.tools,undefined,'Text-only execution, no invented external tool access');
+  }
+  assert.equal(calls.length,10,'Each staff member causes exactly one explicit real API request when authorized');
+  assert.equal((await worker.fetch(request('/api/jobs',task({staffId:11})),env)).status,400);
+  assert.equal((await worker.fetch(request('/api/jobs',task({staffId:'3'})),env)).status,400);
+  const collision=task({staffId:2});
+  const firstRole=await worker.fetch(request('/api/jobs',collision),env);assert.equal(firstRole.status,200);
+  const secondRole=await worker.fetch(request('/api/jobs',{...collision,staffId:3}),env);assert.equal(secondRole.status,409);
+
   // Concurrent duplicate jobs and different jobs cannot cause two API requests.
   env = environment(); let release;
   globalThis.fetch = async () => { calls.push({ concurrent: true }); await new Promise(resolve => { release = resolve; }); return success(); };
