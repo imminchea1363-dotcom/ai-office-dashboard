@@ -10,8 +10,8 @@ const path=require('node:path');
   await context.grantPermissions(['clipboard-read','clipboard-write'],{origin:new URL(base).origin});
   const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
   await page.clock.install();await page.goto(base);
-  const expected={chatgpt:'https://chatgpt.com/',runway:'https://app.runwayml.com/',microsoft:'https://www.microsoft365.com/',higgsfield:'https://higgsfield.ai/',metricool:'https://app.metricool.com/',canva:'https://www.canva.com/',capcut:'https://www.capcut.com/',claude:'https://claude.ai/'};
-  assert.equal(await page.locator('[data-ai-service-link]').count(),8);
+  const expected={gemini:'https://aistudio.google.com/',nemotron:'https://build.nvidia.com/',chatgpt:'https://chatgpt.com/',runway:'https://app.runwayml.com/',microsoft:'https://www.microsoft365.com/',higgsfield:'https://higgsfield.ai/',metricool:'https://app.metricool.com/',canva:'https://www.canva.com/',capcut:'https://www.capcut.com/',claude:'https://claude.ai/'};
+  assert.equal(await page.locator('[data-ai-service-link]').count(),10);
   for(const [id,url]of Object.entries(expected)){
    const link=page.locator('[data-ai-service-link='+id+']');
    assert.equal(await link.getAttribute('href'),url);assert.equal(await link.getAttribute('target'),'_blank');assert.match(await link.getAttribute('rel'),/noopener/);
