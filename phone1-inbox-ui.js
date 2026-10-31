@@ -36,7 +36,8 @@
  '#db-p1-inbox-list form button{justify-self:start}'
  ].join('\n');document.head.append(style);
  parent.querySelector('#db-ai-jobs').before(panel);
- let credential='',busy=false,records=[];
+ let credential='',busy=false,records=[],poll=null;
+ const stop=()=>{if(poll!==null){clearInterval(poll);poll=null;}};
  const notify=text=>{status.textContent=text;};
  function announce(){
   document.dispatchEvent(new CustomEvent('dongbaek-phone1-inbox',{detail:{jobs:records.map(t=>({id:t.id,staffId:t.staffId,title:t.title,status:t.status}))}}));
@@ -91,7 +92,21 @@
   }
   announce();
  }
- check.addEventListener('click',async()=>{
+ async function refresh(silent=false){
+  if(busy||!credential||document.hidden)return;
+  if(silent&&[...list.querySelectorAll('textarea')].some(field=>field.value.trim()))return;
+  busy=true;check.disabled=true;
+  try{
+   const data=await call('/api/phone1/inbox');
+   if(!Array.isArray(data.tasks))throw Error('서버 응답을 확인할 수 없습니다.');
+   const next=data.tasks.filter(t=>t&&roster.some(p=>p.id===t.staffId)&&typeof t.id==='string');
+   if(JSON.stringify(next)!==JSON.stringify(records)){records=next;render();}
+   if(!silent)notify('1호 업무 '+records.length+'건 확인 · 접수 후 30초 간격으로 새 업무 확인');
+  }catch(error){
+   notify('1호 업무 조회 실패 · '+(error.message||'연결 오류')+' · 실제 지시 상태 확인 필요');
+  }finally{busy=false;check.disabled=false;}
+ }
+ check.addEventListener('click',()=>{
   if(busy)return;
   const next=password.value.trim();
   if(next){
@@ -100,15 +115,11 @@
    credential=next;password.value='';
   }
   if(!credential){notify('사무실 접속 암호를 입력해 주세요.');return;}
-  busy=true;check.disabled=true;
-  try{
-   const data=await call('/api/phone1/inbox');
-   if(!Array.isArray(data.tasks))throw Error('서버 응답을 확인할 수 없습니다.');
-   records=data.tasks.filter(t=>t&&roster.some(p=>p.id===t.staffId)&&typeof t.id==='string');
-   render();notify('1호 업무 '+records.length+'건을 확인했습니다. 지시 수신만으로 AI를 자동 실행하지 않습니다.');
-  }catch(error){notify(error.message||'업무 지시를 가져오지 못했습니다.');}
-  finally{busy=false;check.disabled=false;}
+  refresh();
+  stop();
+  poll=setInterval(()=>refresh(true),30000);
  });
- window.addEventListener('pagehide',()=>{credential='';password.value='';});
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh(true);});
+ window.addEventListener('pagehide',()=>{credential='';password.value='';stop();});
  render();
 })();
