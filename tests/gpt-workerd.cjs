@@ -69,6 +69,22 @@ const hermesPassword = 'mock-only-hermes-agent-password-32-characters';
   assert.equal(phoneStatus.reviewStatus,'pending');
   assert.equal(calls,1,'Phone1 dispatch must not trigger extra GPT calls');
   console.log('PASS phone1 -> office -> phone1 actual workerd D1 round trip without extra GPT calls');
+  r=await runtime.dispatchFetch('https://worker.test/api/phone1/presence',{headers});
+  let liveStatus=await r.json();
+  assert.equal(liveStatus.connection,'never_connected');
+  r=await runtime.dispatchFetch('https://worker.test/api/phone1/agent/heartbeat',{
+   method:'POST',headers:agentHeaders,
+   body:JSON.stringify({state:'working',source:'hermes_runtime',taskTitle:'진행 중인 실사 영상 컷 검토'})
+  });
+  assert.equal(r.status,200);
+  r=await runtime.dispatchFetch('https://worker.test/api/phone1/presence',{headers});
+  liveStatus=await r.json();
+  assert.equal(liveStatus.connection,'online');
+  assert.equal(liveStatus.state,'working');
+  assert.equal(liveStatus.taskTitle,'진행 중인 실사 영상 컷 검토');
+  assert.equal(calls,1,'Heartbeat must never invoke the paid GPT model');
+  console.log('PASS real workerd phone1 live heartbeat: authenticated device report and office read, no GPT calls');
+
 
   console.log('PASS actual Cloudflare workerd: D1 schema, authentication, single mocked Responses request and result recovery');
  }finally{await runtime.dispose();}
