@@ -1,0 +1,9 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "dongbaek-hermes-status",
+  "main": "relay-worker.mjs",
+  "compatibility_date": "2026-08-01",
+  "workers_dev": true,
+  "observability": { "enabled": false },
+  "d1_databases": [{ "binding": "DB", "database_name": "dongbaek-hermes-status", "database_id": "SET_YOUR_OWN_D1_ID_ON_DEPLOY" }]
+}
