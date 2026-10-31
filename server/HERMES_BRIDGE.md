@@ -27,6 +27,7 @@ Cloudflare Worker 환경에 기존 `OFFICE_ACCESS_TOKEN`(20~256자), 별도의 `
 | 웹 사무실 | `GET /api/hermes/tasks?id=...` | 저장된 상태·결과 확인 |
 | Hermes 전용 클라이언트 | `GET /api/hermes/agent/next` | 대기 업무 한 건만 원자적으로 점유하고 claimToken 반환 |
 | Hermes 전용 클라이언트 | `POST /api/hermes/agent/result` | `{id,claimToken,status,result}` 기록. 중복 제출 차단 |
+| Hermes 전용 클라이언트 | `POST /api/hermes/agent/status` | `{id,claimToken}`으로 이미 완료된 결과를 확인. 추가 실행 없음 |
 
 서버의 에이전트 전용 경로는 `Origin`이 설정된 브라우저 요청을 거절합니다. **무작위 32자 이상의 별도 비밀키**를 사용해야 합니다.
 
@@ -38,6 +39,7 @@ Cloudflare Worker 환경에 기존 `OFFICE_ACCESS_TOKEN`(20~256자), 별도의 `
 2. `python3 server/hermes_mailbox_client.py claim` — 한 건만 수신하고 암호화하지 않은 로컬 작업파일을 권한 0600으로 저장합니다. Hermes 자체는 실행하지 않습니다.
 3. `python3 server/hermes_mailbox_client.py show` — 업무 지시와 제한 조건을 읽고 기존 Hermes에서 별도로 초안을 작성합니다. 파일 변경이나 외부 발송·게시 권한은 허용하지 않습니다.
 4. 검토한 답변 텍스트를 UTF-8 파일에 담고 `python3 server/hermes_mailbox_client.py submit --file result.txt`로 서버에 반환합니다.
+   - 결과가 서버에 들어갔는지 불확실하면 `python3 server/hermes_mailbox_client.py verify`로만 확인합니다. Hermes 모델은 다시 실행하지 않습니다.
 5. 웹 사무실에서 상태 확인을 누르면 결과가 보이지만, 검수 전 자동 게시되지 않습니다.
 
 이 수동 수신 클라이언트는 **상시 폴링/자동 Hermes 실행이 아닙니다.** 자동 Hermes 실행을 하려면 현재 Termux Hermes 버전과 모델 권한 및 도구 실행 범위를 확인한 뒤, 별도 승인 게이트가 있는 실행기를 추가해야 합니다. 공식 문서에 없는 CLI 옵션을 임의로 설치하거나 사용하지 않습니다.
@@ -46,7 +48,7 @@ Cloudflare Worker 환경에 기존 `OFFICE_ACCESS_TOKEN`(20~256자), 별도의 `
 
 - 신규 업무 접수 중 연결이 끊기면 임의로 새 업무를 보내지 않고, 같은 ID로 상태를 조회합니다.
 - Agent가 업무를 수신한 뒤 앱이 중지되면 서버의 상태는 `claimed`로 유지됩니다. **자동 재실행하지 않습니다.**
-- 결과 반환 도중 통신이 끊기면 클라이언트의 `~/.hermes/dongbaek-mailbox-claim.json` 기록을 보존합니다. 중복 실행하지 않고 서버 상태를 확인해 처리합니다.
+- 결과 반환 도중 통신이 끊기면 클라이언트의 `~/.hermes/dongbaek-mailbox-claim.json` 기록을 보존합니다. `verify` 명령으로 서버 수신 여부를 조회하고 확인되면 로컬 기록을 정리합니다. 모델을 다시 실행하지 않습니다.
 - 보고함 결과는 브라우저 저장소에 별도 보존됩니다. 기기 간 자동 동기화하지 않습니다.
 - 삭제, SNS 게시, 업로드, 메시지 발송, 예약, 결제 또는 새로운 구독은 이 연결에서 수행하지 않습니다.
 
