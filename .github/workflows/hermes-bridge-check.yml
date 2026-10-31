@@ -1,0 +1,47 @@
+name: Verify Hermes status bridge (no deploy)
+
+on:
+  pull_request:
+    paths:
+      - 'hermes-bridge/**'
+      - 'tests/hermes-*'
+      - 'tests/test_hermes_bridge.py'
+      - 'index.html'
+      - 'package.json'
+      - 'scripts/build-pwa.py'
+      - 'scripts/export-standalone.py'
+      - 'sw.js'
+      - '.github/workflows/hermes-bridge-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  hermes-bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate source and hermes-specific tests
+        run: |
+          npm run check
+          npm run test:hermes-bridge
+      - name: Verify offline and single HTML distribution
+        run: |
+          npm run build:pwa
+          npm run export
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          root=Path('dist')
+          assert (root/'dongbaek-pwa/hermes-bridge/dashboard.js').is_file()
+          with zipfile.ZipFile(root/'주식회사동백-설치용.zip') as z:
+              assert 'hermes-bridge/dashboard.js' in z.namelist()
+          out=(root/'주식회사동백-v3.html').read_text(encoding='utf-8')
+          assert 'Hermes 실제 업무 상태' in out
+          assert '<script src="hermes-bridge/dashboard.js">' not in out
+          print('PASS: Hermes panel in PWA, install ZIP and standalone HTML')
+          PY
