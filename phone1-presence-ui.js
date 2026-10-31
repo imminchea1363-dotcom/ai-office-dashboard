@@ -1,7 +1,7 @@
 /* Phone1 presence view: real device-reported state, never a simulated employee animation. */
 (() => {
  'use strict';
- const parent=document.getElementById('db-ai-desk');
+ const parent=document.querySelector('.db-main');
  if(!parent)return;
  const SERVER='https://dongbaek-api.imminchea1363.workers.dev';
  const panel=document.createElement('section');panel.id='db-phone1-presence';
@@ -28,7 +28,7 @@
  '#db-phone1-presence button[hidden]{display:none}',
  '#db-phone1-presence-state{font-size:14px!important;font-weight:700!important}',
  ].join('\n');document.head.append(style);
- parent.querySelector('#db-ai-jobs').before(panel);
+ parent.querySelector('.db-metrics').after(panel);
  let access='',busy=false,tick=null;
  function broadcast(data){document.dispatchEvent(new CustomEvent('dongbaek-phone1-presence',{detail:data}));}
  const labelFor={idle:'대기 중',working:'실제 업무 중',paused:'일시정지',error:'오류 보고'};
@@ -36,10 +36,10 @@
   if(!data||data.connection==='never_connected'){state.textContent='1호 Hermes · 연결 이력 없음';detail.textContent='기기에서 상태를 전송한 기록이 없습니다.';broadcast({connection:'never_connected',state:'unknown'});return;}
   if(data.connection==='stale'){state.textContent='1호 Hermes · 연결 상태 확인 필요';detail.textContent='마지막 신호 후 '+data.ageSeconds+'초 경과. 이전 상태를 작업 중으로 유지하지 않습니다.';broadcast({connection:'stale',state:'unknown'});return;}
   if(data.connection!=='online'||!Object.hasOwn(labelFor,data.state)){state.textContent='1호 Hermes · 상태 확인 불가';detail.textContent='수신된 상태를 확인해야 합니다.';broadcast({connection:'unknown',state:'unknown'});return;}
-  state.textContent='1호 Hermes · '+labelFor[data.state];
   const manual=data.source==='manual';
+  state.textContent='1호 Hermes · '+(manual?'수동 보고: '+(data.state==='working'?'작업 중':labelFor[data.state]):labelFor[data.state]);
   const task=data.state==='working'&&data.taskTitle?' · 업무: '+data.taskTitle:'';
-  detail.textContent=(manual?'수동 상태 보고':'Hermes 실행기 신호')+' · '+data.ageSeconds+'초 전 수신'+task;
+  detail.textContent=(manual?'수동 상태 보고 (실행 확인 전)':'Hermes 실행기에서 보고한 상태')+' · '+data.ageSeconds+'초 전 수신'+task;
   broadcast({connection:'online',state:data.state,source:data.source,taskTitle:data.taskTitle||null,lastSeen:data.lastSeen});
  }
  async function refresh(){
