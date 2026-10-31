@@ -5,6 +5,8 @@
   if(!office)return;
   const services=[
     {id:'chatgpt',name:'ChatGPT',use:'기획 · 글쓰기 · 검수',url:'https://chatgpt.com/'},
+    {id:'gemini',name:'Gemini API',use:'조사·기획 초안',url:'https://aistudio.google.com/'},
+    {id:'nemotron',name:'NVIDIA Nemotron API',use:'검수·분석 초안',url:'https://build.nvidia.com/'},
     {id:'runway',name:'Runway',use:'AI 영상 · 이미지',url:'https://app.runwayml.com/'},
     {id:'microsoft',name:'Microsoft 365',use:'문서 · 엑셀 · 발표자료',url:'https://www.microsoft365.com/'},
     {id:'higgsfield',name:'Higgsfield AI',use:'AI 영상 · 광고',url:'https://higgsfield.ai/'},
@@ -50,7 +52,9 @@
     const link=el('a','서비스 열기 ↗');link.href=item.url;link.target='_blank';link.rel='noopener noreferrer';link.dataset.aiServiceLink=item.id;card.append(link);byId('db-ai-tools').append(card);
   }
   function refreshWorkers(){
-    const people=office.employees().filter(p=>p.state!=='off'),signature=JSON.stringify(people.map(p=>[p.id,p.name,p.job]));
+    const visible=office.employees().filter(p=>p.state!=='off'&&p.id<=4);
+    const extra=(window.DongbaekTeam10State?.roster||[]).filter(p=>p.id>4);
+    const people=[...visible,...extra],signature=JSON.stringify(people.map(p=>[p.id,p.name,p.job]));
     if(worker.dataset.signature===signature)return;
     const selected=worker.value||String(draft.workerId||1);worker.replaceChildren();
     for(const p of people){const option=el('option',p.job+' · '+p.name);option.value=String(p.id);worker.append(option);}
@@ -60,7 +64,7 @@
   refreshWorkers();provider.value=service(draft.service||assignments[worker.value]||defaults[worker.value]).id;
   title.value=clean(draft.title,100);brief.value=clean(draft.brief,6000);if([...output.options].some(o=>o.value===draft.output))output.value=draft.output;
   function instruction(job){return ['[동백 사무실 업무 지시]','담당: '+job.job+' · '+job.workerName,'업무: '+job.title,'사용 도구: '+service(job.service).name,'','[요청 내용]',job.brief,'','[원하는 결과]',job.output,'확인되지 않은 정보는 추측하지 말고 확인이 필요한 부분을 표시해 주세요.'].join('\n');}
-  function current(){const person=office.employees().find(p=>String(p.id)===worker.value);return {workerId:person?.id||0,workerName:person?.name||'담당 직원',job:person?.job||'업무',service:provider.value,title:title.value.trim(),brief:brief.value.trim(),output:output.value};}
+  function current(){const id=Number(worker.value),person=id<=4?office.employees().find(p=>p.id===id):window.DongbaekTeam10State?.roster.find(p=>p.id===id);return {workerId:person?.id||0,workerName:person?.name||'담당 직원',job:person?.job||'업무',service:provider.value,title:title.value.trim(),brief:brief.value.trim(),output:output.value};}
   function updateDraft(){draft={...current(),jobId:draft.jobId};prompt.value=instruction(draft);byId('db-ai-open').href=service(provider.value).url;byId('db-ai-open').textContent='2. '+service(provider.value).name+' 열기 ↗';}
   function prepareJob(){
     if(!form.reportValidity())return null;
@@ -107,8 +111,15 @@
       if(job.result)details.append(el('pre',job.result));if(job.url){const link=el('a','저장한 결과 열기 ↗');link.href=job.url;link.target='_blank';link.rel='noopener noreferrer';details.append(link);}card.append(details);
       const actions=el('div',null,'db-ai-actions');const record=el('button','결과 기록');record.dataset.aiRecord=job.id;record.disabled=['reporting','generating','pending'].includes(job.status);record.onclick=()=>{editing=job.id;byId('db-ai-result-title').textContent=job.title+' · '+service(job.service).name;byId('db-ai-result-text').value=job.result;byId('db-ai-result-url').value=job.url;byId('db-ai-result-error').textContent='';dialog.showModal();};actions.append(record);
       const report=el('button',job.status==='reported'?'보고 완료':'대표에게 보고');report.dataset.aiReport=job.id;report.disabled=!['ready'].includes(job.status);report.onclick=()=>{
-        const employee=office.employees().find(p=>p.id===job.workerId);
-        if(!employee||employee.state==='off'){notice('담당 직원이 출근한 상태에서 보고할 수 있습니다. 기록한 결과는 보관됩니다.');return;}
+        const employee=job.workerId<=4?office.employees().find(p=>p.id===job.workerId):null;
+        if(!employee){
+          const staged=window.DongbaekTeam10State?.roster.some(p=>p.id===job.workerId);
+          if(!staged){notice('등록되지 않은 직원입니다. 업무 기록을 확인해 주세요.');return;}
+          if(!job.result?.trim()&&!job.url){notice('실제 결과 기록이 없어 보고할 수 없습니다.');return;}
+          job.status='reported';job.updated=new Date().toISOString();persist();renderJobs();
+          notice(job.workerName+'의 업무 결과를 보고함에 접수했습니다. 이 직원의 이동 애니메이션은 아직 연결되지 않았습니다.');return;
+        }
+        if(employee.state==='off'){notice('담당 직원이 퇴근한 상태입니다. 결과는 보관됩니다.');return;}
         const previous=employee.reports||0;
         if(!office.report?.(job.workerId)){notice('다른 직원이 이동 중입니다. 이동이 끝난 뒤 다시 보고해 주세요.');return;}
         job.beforeReports=previous;job.status='reporting';persist();renderJobs();notice(job.workerName+'이 대표실로 이동합니다. 보고가 접수되면 완료로 표시됩니다.');
@@ -146,7 +157,7 @@
   });
   window.DongbaekAIDesk=Object.freeze({
     startGPT:()=>{
-      if(current().workerId!==1||provider.value!=='chatgpt'){notice('GPT 시험 연결은 총괄 직원과 ChatGPT를 선택해 주세요.');return null;}
+      if(!window.DongbaekTeam10State?.roster.some(p=>p.id===current().workerId)||!['chatgpt','gemini','claude','nemotron'].includes(provider.value)){notice('등록된 직원과 연결 지원 AI를 선택해 주세요.');return null;}
       if(jobs.some(j=>j.gpt&&['generating','pending'].includes(j.status))){notice('먼저 진행 중인 GPT 업무의 결과를 확인해 주세요.');return null;}
       draft.jobId=null;const job=prepareJob();if(!job)return null;
       job.gpt=true;job.status='generating';persist();renderJobs();return {...job};
@@ -164,6 +175,7 @@
        notice('GPT 결과를 기록했습니다. 검토한 뒤 대표에게 보고할 수 있습니다.');
      },
     failGPT:(id,pending)=>{const job=jobs.find(j=>j.id===id);if(!job)return;job.status=pending?'pending':'failed';job.updated=new Date().toISOString();persist();renderJobs();},
+    jobsSnapshot:()=>jobs.map(j=>Object.freeze({id:j.id,workerId:j.workerId,workerName:j.workerName,title:j.title,service:j.service,status:j.status,hasResult:Boolean(j.result?.trim()||j.url),gpt:j.gpt===true,created:j.created,updated:j.updated})),
     pendingGPT:()=>jobs.filter(j=>j.gpt&&j.status==='pending').map(j=>({...j})),
     abandonGPT:id=>{const job=jobs.find(j=>j.id===id);if(!job||job.status!=='pending')return;job.status='failed';persist();renderJobs();},
     notify:notice

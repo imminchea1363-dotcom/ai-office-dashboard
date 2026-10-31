@@ -5,9 +5,10 @@
  if (!desk || !section) return;
  const $ = id => document.getElementById(id);
  const SERVER = 'https://dongbaek-api.imminchea1363.workers.dev';
- let connected = false, access = '', busy = false;
+ let connected = false, access = '', busy = false, capabilities = {chatgpt:{configured:true}};
+  const executable=['chatgpt','gemini','claude','nemotron'];
  const panel = document.createElement('div'); panel.className = 'db-ai-gpt'; panel.id = 'db-gpt-panel';
- panel.innerHTML = `<h3>동백대리 · GPT 시험 연결</h3><p>총괄 직원에게 지시하면 GPT가 작성한 결과를 아래 보고함에 기록합니다. 다른 도구는 기존처럼 직접 열어 이용합니다. 업무 지시가 OpenAI로 전송되며 결과는 연결 서버와 이 브라우저에 저장됩니다.</p><details id="db-gpt-settings" open><summary>GPT 연결 설정</summary><form id="db-gpt-connect-form"><label>사무실 접속 암호<input id="db-gpt-access" type="password" autocomplete="off" minlength="20" maxlength="256" required placeholder="Cloudflare에 등록한 사무실 접속 암호"></label><p>OpenAI API 키를 입력하는 칸이 아닙니다. 접속 암호는 이 페이지를 닫거나 연결을 해제하면 사라집니다.</p><div class="db-ai-actions"><button id="db-gpt-connect" type="submit">연결 확인</button><button id="db-gpt-disconnect" type="button">연결 해제</button></div></form></details><p id="db-gpt-status" role="status" aria-live="polite">서버 설정 후 연결할 수 있습니다. 연결 확인만으로는 GPT를 호출하지 않습니다.</p><p>시험 한도: 한국시간 기준 하루 20회 · 전체 200회 · 한 번에 최대 1,200 출력 토큰. 실패한 실행도 한도에 포함될 수 있습니다. 자동 반복 실행과 외부 게시는 하지 않습니다.</p>`;
+ panel.innerHTML = `<h3>직원 10명 · GPT 실행 연결</h3><p>등록된 직원 10명 각각에게 실제 GPT 텍스트 업무를 실행할 수 있습니다. 역할별 작업 초안을 보고함에 기록합니다. 이미지·영상 생성 및 다른 도구 연결은 별도입니다. 업무 지시가 OpenAI로 전송되며 결과는 연결 서버와 이 브라우저에 저장됩니다.</p><details id="db-gpt-settings" open><summary>GPT 연결 설정</summary><form id="db-gpt-connect-form"><label>사무실 접속 암호<input id="db-gpt-access" type="password" autocomplete="off" minlength="20" maxlength="256" required placeholder="Cloudflare에 등록한 사무실 접속 암호"></label><p>OpenAI API 키를 입력하는 칸이 아닙니다. 접속 암호는 이 페이지를 닫거나 연결을 해제하면 사라집니다.</p><div class="db-ai-actions"><button id="db-gpt-connect" type="submit">연결 확인</button><button id="db-gpt-disconnect" type="button">연결 해제</button></div></form></details><p id="db-gpt-status" role="status" aria-live="polite">서버 설정 후 연결할 수 있습니다. 연결 확인만으로는 GPT를 호출하지 않습니다.</p><p>시험 한도: 한국시간 기준 하루 20회 · 전체 200회 · 한 번에 최대 1,200 출력 토큰. 실패한 실행도 한도에 포함될 수 있습니다. 자동 반복 실행과 외부 게시는 하지 않습니다.</p>`;
  section.querySelector('.db-ai-tools').before(panel);
  const css = document.createElement('style'); css.textContent = '.db-ai-gpt{padding:18px;border:1px solid #abc3ab;border-radius:10px;background:#eef4e9;margin:16px 0;overflow-wrap:anywhere}.db-ai-gpt h3{margin-top:0}.db-ai-gpt form{margin-top:13px;max-width:620px}.db-ai-gpt p{font-size:12px}.db-ai-gpt input{margin-top:5px}#db-gpt-status{font-weight:600;margin:13px 0 0}.db-gpt-recovery{padding:10px;background:#eef4e9;border-radius:7px;margin:9px 0}.db-ai-gpt summary{cursor:pointer}#db-gpt-run[hidden],#db-manager-run[hidden]{display:none}'; document.head.append(css);
  const run = document.createElement('button'); run.type = 'button'; run.id = 'db-gpt-run'; run.className = 'db-ai-primary'; run.textContent = 'GPT로 실행 · 사용료 발생';
@@ -42,6 +43,13 @@
    ? ['동백총괄매니저 업무 배정','임채리사원 자료조사','임민채대리 디자인 기획','김검수사원 검수','동백총괄매니저 최종 보고']
    : ['동백총괄매니저 업무 배정','임채리사원 자료조사','김검수사원 검수','동백총괄매니저 최종 보고'];
  }
+ function announceStage(record,index,status,title){
+  const workers=record.design?[1,2,3,4,1]:[1,2,4,1];
+  const workerId=workers[Math.max(0,Math.min(workers.length-1,index))];
+  document.dispatchEvent(new CustomEvent('dongbaek-manager-stage',{
+   detail:{parentId:record.parentId,workerId,status,title:String(title||'').slice(0,120)}
+  }));
+ }
  function renderSteps(job){
   const steps=planSteps(job);
   $('db-manager-quick-stages').replaceChildren(...steps.map((name,i)=>{
@@ -63,15 +71,18 @@
  }
  const message = text => { $('db-gpt-status').textContent = text; };
  function update() {
-  const eligible = $('db-ai-worker').value === '1' && $('db-ai-service').value === 'chatgpt';
-  run.hidden = !eligible; run.disabled = !connected || busy || desk.pendingGPT().length > 0;
-  managerButton.hidden = !eligible;
+  const serviceId=$('db-ai-service').value;
+   const eligible = window.DongbaekTeam10State?.roster.some(p=>String(p.id)===$('db-ai-worker').value) && executable.includes(serviceId);
+   run.textContent = serviceId==='chatgpt'?'GPT로 실행 · 사용료 발생':serviceId+' API 실행 · 사용료 발생';
+   run.title = eligible&&!capabilities[serviceId]?.configured?'이 AI의 서버 API 키가 설정되지 않았습니다.':'';
+  run.hidden = !eligible; run.disabled = !connected || busy || !capabilities[serviceId]?.configured || desk.pendingGPT().length > 0;
+  managerButton.hidden = !eligible || $('db-ai-worker').value !== '1' || serviceId !== 'chatgpt';
   managerButton.disabled = !connected || busy || desk.pendingGPT().length > 0;
   quickButton.disabled = !connected || busy || desk.pendingGPT().length > 0;
   $('db-gpt-connect').disabled = busy; $('db-gpt-disconnect').disabled = busy;
   $('db-gpt-access').disabled = busy;
  }
- function disconnect() { connected = false; access = ''; $('db-gpt-access').value = ''; update(); }
+ function disconnect() { connected = false; capabilities={chatgpt:{configured:true}}; access = ''; $('db-gpt-access').value = ''; update(); }
  async function call(path, body) {
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 60000);
   try {
@@ -88,8 +99,8 @@
   if (!/^[!-~]{20,256}$/.test(value)) { message('접속 암호는 공백 없이 영문·숫자·기호 20~256자로 입력해 주세요.'); return; }
   access = value; busy = true; update(); message('연결 서버를 확인하고 있습니다…');
   try {
-   const data = await call('/api/status'); connected = true; $('db-gpt-access').value = ''; $('db-gpt-settings').open = false;
-   message(`GPT 연결 준비 완료 · ${data.model} · 오늘 ${data.used.today}/${data.limits.daily}회, 전체 ${data.used.total}/${data.limits.pilot}회. 업무 입력 후 실행 버튼을 눌러주세요.`);
+   const data = await call('/api/status'); connected = true; capabilities=data.providers||{chatgpt:{configured:true}}; document.dispatchEvent(new CustomEvent('dongbaek-ai-providers',{detail:{providers:capabilities}})); $('db-gpt-access').value = ''; $('db-gpt-settings').open = false;
+   message(`서버 인증 확인 · ${Object.entries(capabilities).map(([name,value])=>name+': '+(value.configured?'API 키 설정 감지':'미설정')).join(' / ')} · 오늘 ${data.used.today}/${data.limits.daily}회, 전체 ${data.used.total}/${data.limits.pilot}회. 실제 모델 실행 성공은 별도 확인이 필요합니다.`);
   } catch (error) { disconnect(); message(error.message === 'Failed to fetch' ? '서버 코드·DB·접속 암호 설정과 인터넷 연결을 확인해 주세요.' : error.message); }
   finally { busy = false; update(); renderRecovery(); }
  };
@@ -98,7 +109,7 @@
   if (!connected || busy) return;
   const job = desk.startGPT(); if (!job) return;
   busy = true; update(); message('GPT가 업무를 작성하고 있습니다. 중복 요청은 보내지 않습니다.');
-  try { const result = await call('/api/jobs', { id: job.id, title: job.title, brief: job.brief, output: job.output }); desk.finishGPT(job.id, result); message('GPT 작업 완료. 아래 보고함에서 결과를 검토하고 대표에게 보고해 주세요.'); }
+  try { const result = await call('/api/jobs', { id: job.id, staffId: job.workerId, provider: job.service, title: job.title, brief: job.brief, output: job.output }); desk.finishGPT(job.id, result); document.dispatchEvent(new CustomEvent('dongbaek-ai-execution-success',{detail:{provider:job.service}})); message('AI 실제 응답 수신 · GPT 작업 완료. 아래 보고함에서 결과를 검토하고 대표에게 보고해 주세요.'); }
   catch (error) {
    const pending = !error.code || ['pending', 'uncertain', 'server_error'].includes(error.code);
    desk.failGPT(job.id, pending);
@@ -183,6 +194,7 @@
      record.posterReady=true;
      if(!saveManager())throw new Error('포스터 생성 기록을 저장하지 못했습니다. 유료 GPT 호출 없이 복구할 수 있습니다.');
     }
+    announceStage(record,index,'running',task.title);
     message('총괄 자동 배정: ' + (index + 1) + '/'+record.parts.length+'단계 진행 중 · ' + task.title);
     if(quickParentId===record.parentId) quickStatus(index, (index + 1) + '/'+record.parts.length+'단계 진행 중: ' + task.title);
     let response;
@@ -192,18 +204,22 @@
     } else {
      part.attempted = true;
      if (!saveManager()) throw new Error('진행 기록을 저장하지 못했습니다. GPT 호출은 보내지 않았습니다.');
-     response = await call('/api/jobs', { id: part.id, ...task });
+     const roleIds=record.design?[1,2,3,4,1]:[1,2,4,1];
+     response = await call('/api/jobs', { id: part.id, staffId:roleIds[index],provider:'chatgpt',...task });
     }
     part.result = typeof response.result === 'string' ? response.result.slice(0, 5000) : '';
     if (!part.result) throw new Error('GPT 결과가 비어 있어 다음 직원에게 전달하지 않았습니다.');
     record.stage = index + 1;
     if (!saveManager()) throw new Error('진행 결과 저장 실패. 추가 GPT 호출을 중단했습니다.');
+    announceStage(record,index,'complete',task.title);
    }
+   announceStage(record,record.parts.length-1,'finished','종합 보고서 저장');
    desk.finishGPT(record.parentId, {result: composeManagerReport(record), usage: {calls: record.parts.length}, autoReport: true});
    delete managerRuns[record.parentId]; saveManager();
    message('직원별 GPT 처리와 총괄 보고서 작성 완료. 대표실 보고를 요청했습니다. 보고함에서 상태를 확인하세요.');
    if(quickParentId===record.parentId) quickStatus(record.parts.length,'GPT '+record.parts.length+'단계 완료 · 대표실 보고 상태는 아래 보고함에서 확인하세요.');
   } catch (error) {
+   announceStage(record,record.stage,'paused','GPT 결과 확인 또는 연결 복구 필요');
    desk.failGPT(record.parentId, true);
    if (error.status === 401) disconnect();
    message('자동 배정 중단: ' + (error.message || '결과를 확인할 수 없습니다.') + ' · 자동 재실행하지 않습니다. 아래 업무에서 결과 확인 후 재개하세요.');

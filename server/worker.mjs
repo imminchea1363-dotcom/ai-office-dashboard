@@ -1,3 +1,7 @@
+import {PROVIDER_IDS,providerModel,providerStatus,runTextProvider} from './ai-providers.mjs';
+import {handlePhone1Presence,isPhone1PresenceAgentPath,isPhone1PresenceOfficePath} from './phone1-presence.mjs';
+import {handlePhone1Inbox,isPhoneAgentPath,isPhoneOfficePath} from './phone1-inbox.mjs';
+import {handleHermesQueue,isHermesAgentPath,isHermesOfficePath} from './hermes-queue.mjs';
 /* Cloudflare Worker. Secrets belong in Cloudflare, never in this repository. */
 const ORIGIN = 'https://imminchea1363-dotcom.github.io';
 const MODEL = 'gpt-4.1-mini';
@@ -5,12 +9,26 @@ const DAILY_LIMIT = 20;
 const PILOT_LIMIT = 200;
 const OUTPUT_LIMIT = 1200;
 const MAX_BODY = 32768;
+const metaSchema='CREATE TABLE IF NOT EXISTS gpt_job_providers(id TEXT PRIMARY KEY,provider TEXT NOT NULL,ai_model TEXT NOT NULL)';
 const schema = `CREATE TABLE IF NOT EXISTS gpt_jobs (
  id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, day TEXT NOT NULL,
  status TEXT NOT NULL, created INTEGER NOT NULL, result TEXT,
  input_tokens INTEGER, output_tokens INTEGER
 )`;
-const instructions = '당신은 동백사무실의 동백대리입니다. 대표의 지시에 따라 기획, 글 작성, 요약을 수행합니다. 한국어로 명료하게 답하세요. 제공되지 않은 사실, 가격, 시설 정보와 통계를 지어내지 마세요. 확인이 필요한 정보는 표시하세요. 외부 검색, 게시, 발송, 예약, 결제를 수행했다고 주장하지 마세요. 결과물을 바로 검토할 수 있게 작성하세요.';
+const baseInstructions = '당신은 동백사무실의 AI 작업 담당입니다. 한국어로 결과 초안을 작성하세요. 제공되지 않은 사실, 가격, 시설 정보와 통계를 지어내지 마세요. 확인이 필요한 정보는 표시하세요. 외부 검색·이미지 생성·영상 편집·게시·발송·예약·결제를 수행했다고 주장하지 마세요. 실제 외부 서비스를 작동시키지 않으며 결과는 대표 검수 전 초안입니다.';
+const staffRoles = Object.freeze([
+ '동백 총괄매니저: 업무를 분장하고 관련 근거·검토 사항과 대표 보고 초안을 정리합니다.',
+ '1팀 임채리 사원: 사용자 제공 자료만 조사·정리하고 출처가 없는 사실을 구분합니다.',
+ '2팀 임민채 대리: 영상·디자인의 컷 구성·자막·시안 기획 텍스트를 작성합니다. 실제 영상·이미지를 제작했다고 말하지 않습니다.',
+ '4팀 김검수 사원: 결과물의 사실관계·표현·수치·저작권 위험을 검토해 개선 요청을 작성합니다.',
+ '1팀 홍보기획 사원: 광고 타깃·메시지·CTA를 기획하고 확인 안 된 성과를 추정 사실로 말하지 않습니다.',
+ '2팀 광고영상 사원: Higgsfield·Runway용 장면 기획과 제작 지시문을 작성합니다. 실제 외부 영상을 생성하지 않습니다.',
+ '2팀 영상편집 사원: 실사 원본 기반 FFmpeg/CapCut 편집 계획과 9:16 자막·컷 목록을 작성합니다. 영상 파일 작업은 별도 실행 환경이 필요합니다.',
+ '3팀 SNS 운영팀장: 인스타·스레드·유튜브·틱톡 게시 문안을 작성합니다. 게시·예약 완료라고 말하지 않습니다.',
+ '3팀 블로그 사원: 블로그 글의 구성·본문·검색용 제목 초안을 작성하고 근거 없는 리뷰·경험을 만들지 않습니다.',
+ '4팀 성과분석 사원: 제공된 수치만 계산·분석하고 근거 없는 매출·조회수나 캠페인 성과를 만들어내지 않습니다.'
+]);
+function staffInstruction(staffId){return baseInstructions+'\n[직원별 역할]\n'+staffRoles[staffId-1];}
 
 class Failure extends Error {
  constructor(status, code, message) { super(message); this.status = status; this.code = code; }
@@ -58,13 +76,17 @@ function validate(data) {
   if (typeof data[key] !== 'string' || !data[key].trim() || data[key].length > max) throw new Failure(400, 'invalid_task', '업무 제목과 지시 내용을 확인해 주세요.');
   return data[key].trim();
  };
- return { id: data.id, title: text('title', 100), brief: text('brief', 6000), output: text('output', 80) };
+ const staffId = data.staffId === undefined ? 1 : data.staffId;
+ if (!Number.isInteger(staffId) || staffId < 1 || staffId > 10) throw new Failure(400,'invalid_staff','등록된 10명 중 담당자를 선택해 주세요.');
+ const provider=data.provider===undefined?'chatgpt':data.provider;
+ if(!PROVIDER_IDS.includes(provider))throw new Failure(400,'invalid_provider','지원하는 AI 서비스가 아닙니다.');
+ return {id:data.id,title:text('title',100),brief:text('brief',6000),output:text('output',80),staffId,provider,legacy:data.staffId===undefined&&data.provider===undefined};
 }
 async function usage(db, day) {
  return await db.prepare('SELECT COUNT(*) AS total, COALESCE(SUM(CASE WHEN day = ? THEN 1 ELSE 0 END),0) AS today FROM gpt_jobs').bind(day).first();
 }
 function completed(row, reused = false) {
- return { id: row.id, result: row.result, model: MODEL, reused, usage: { input_tokens: row.input_tokens, output_tokens: row.output_tokens } };
+ return { id: row.id, result: row.result, model: row.ai_model || MODEL, provider: row.provider || 'chatgpt', reused, usage: { input_tokens: row.input_tokens, output_tokens: row.output_tokens } };
 }
 function existing(row, fingerprint) {
  if (row.fingerprint !== fingerprint) throw new Failure(409, 'id_conflict', '같은 식별자로 다른 업무를 실행할 수 없습니다.');
@@ -77,32 +99,40 @@ export default {
  async fetch(request, env) {
   const url = new URL(request.url), origin = request.headers.get('Origin') || '';
   if (request.method === 'GET' && url.pathname === '/health') return json({ service: 'dongbaek-gpt', version: 2, ready: Boolean(configured(env)) }, 200, origin);
+  if (isHermesAgentPath(url.pathname)) return handleHermesQueue(request,env);
+  if (isPhone1PresenceAgentPath(url.pathname)) return handlePhone1Presence(request,env);
+  if (isPhoneAgentPath(url.pathname)) return handlePhone1Inbox(request,env);
   if (origin !== ORIGIN) return json({ error: 'origin_denied', message: '동백사무실에서 접속해 주세요.' }, 403);
   if (request.method === 'OPTIONS') {
    return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': ORIGIN, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '600', Vary: 'Origin' } });
   }
+  if (isHermesOfficePath(url.pathname)) return handleHermesQueue(request,env);
+  if (isPhoneOfficePath(url.pathname)) return handlePhone1Inbox(request,env);
+  if (isPhone1PresenceOfficePath(url.pathname)) return handlePhone1Presence(request,env);
   try {
    if (!['/api/status', '/api/jobs', '/api/result'].includes(url.pathname)) throw new Failure(404, 'not_found', '요청한 기능이 없습니다.');
    if (!configured(env)) throw new Failure(503, 'not_configured', '서버의 API 키, 사무실 접속 암호, DB 연결을 확인해 주세요.');
    if (!await authorized(request, env)) throw new Failure(401, 'unauthorized', '사무실 접속 암호가 맞지 않습니다.');
    await env.DB.prepare(schema).run();
+   await env.DB.prepare(metaSchema).run();
    const day = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
    if (request.method === 'GET' && url.pathname === '/api/status') {
-    return json({ connected: true, model: MODEL, limits: { daily: DAILY_LIMIT, pilot: PILOT_LIMIT, max_output_tokens: OUTPUT_LIMIT, timezone: 'Asia/Seoul' }, used: await usage(env.DB, day) }, 200, origin);
+    return json({ connected: true, model: MODEL, providers: providerStatus(env), limits: { daily: DAILY_LIMIT, pilot: PILOT_LIMIT, max_output_tokens: OUTPUT_LIMIT, timezone: 'Asia/Seoul' }, used: await usage(env.DB, day) }, 200, origin);
    }
    if (request.method === 'GET' && url.pathname === '/api/result') {
     const id = url.searchParams.get('id') || '';
     if (!/^[a-f0-9-]{36}$/i.test(id)) throw new Failure(400, 'invalid_id', '업무 식별자가 올바르지 않습니다.');
-    const row = await env.DB.prepare('SELECT * FROM gpt_jobs WHERE id = ?').bind(id).first();
+    const row = await env.DB.prepare('SELECT gpt_jobs.*,gpt_job_providers.provider,gpt_job_providers.ai_model FROM gpt_jobs LEFT JOIN gpt_job_providers ON gpt_jobs.id=gpt_job_providers.id WHERE gpt_jobs.id = ?').bind(id).first();
     if (!row) throw new Failure(404, 'missing_job', '접수된 업무를 찾을 수 없습니다.');
     if (row.status !== 'done') throw new Failure(409, row.status === 'reserved' ? 'pending' : 'previous_attempt', row.status === 'reserved' ? '아직 결과가 준비되지 않았습니다. 잠시 후 다시 확인해 주세요.' : '이 업무는 결과 없이 종료됐습니다.');
     return json(completed(row, true), 200, origin);
    }
    if (request.method !== 'POST' || url.pathname !== '/api/jobs') throw new Failure(405, 'method_not_allowed', '요청 방식을 확인해 주세요.');
    const task = validate(await readJSON(request));
-   const fingerprint = await hash(JSON.stringify([task.title, task.brief, task.output]));
-   const old = await env.DB.prepare('SELECT * FROM gpt_jobs WHERE id = ?').bind(task.id).first();
+   const fingerprint = await hash(JSON.stringify(task.legacy?[task.title, task.brief, task.output]:[task.title, task.brief, task.output, task.staffId, task.provider]));
+   const old = await env.DB.prepare('SELECT gpt_jobs.*,gpt_job_providers.provider,gpt_job_providers.ai_model FROM gpt_jobs LEFT JOIN gpt_job_providers ON gpt_jobs.id=gpt_job_providers.id WHERE gpt_jobs.id = ?').bind(task.id).first();
    if (old) return json(existing(old, fingerprint), 200, origin);
+   if(!providerStatus(env)[task.provider].configured)throw new Failure(503,'provider_not_configured','선택한 AI의 서버 전용 API 키가 설정되지 않았습니다. 다른 AI로 자동 대체하지 않습니다.');
    const now = Date.now();
    // A single atomic SQLite statement enforces both quotas and one in-flight call.
    // Failed/uncertain attempts stay counted, so retries cannot bypass the limits.
@@ -113,30 +143,25 @@ export default {
     NOT EXISTS (SELECT 1 FROM gpt_jobs WHERE status = 'reserved' AND created > ?)`)
     .bind(task.id, fingerprint, day, now, day, DAILY_LIMIT, PILOT_LIMIT, now - 120000).run();
    if (!reserved.meta?.changes) {
-    const duplicate = await env.DB.prepare('SELECT * FROM gpt_jobs WHERE id = ?').bind(task.id).first();
+    const duplicate = await env.DB.prepare('SELECT gpt_jobs.*,gpt_job_providers.provider,gpt_job_providers.ai_model FROM gpt_jobs LEFT JOIN gpt_job_providers ON gpt_jobs.id=gpt_job_providers.id WHERE gpt_jobs.id = ?').bind(task.id).first();
     if (duplicate) return json(existing(duplicate, fingerprint), 200, origin);
     const used = await usage(env.DB, day);
     if (used.total >= PILOT_LIMIT) throw new Failure(429, 'pilot_limit', '시험 운영의 총 200회 한도에 도달했습니다. 사용량을 검토한 뒤 확대해 주세요.');
     if (used.today >= DAILY_LIMIT) throw new Failure(429, 'daily_limit', '오늘의 20회 한도에 도달했습니다. 한국시간 자정 이후 다시 이용해 주세요.');
     throw new Failure(429, 'busy', '다른 업무를 처리 중입니다. 완료 후 다시 실행해 주세요.');
    }
-   let remote, payload;
    try {
-    remote = await fetch('https://api.openai.com/v1/responses', {
-     method: 'POST', headers: { Authorization: 'Bearer ' + env.OPENAI_API_KEY, 'Content-Type': 'application/json' },
-     body: JSON.stringify({ model: MODEL, instructions, input: `[업무]\n${task.title}\n\n[지시]\n${task.brief}\n\n[결과 형태]\n${task.output}`, max_output_tokens: OUTPUT_LIMIT, store: false }),
-     signal: AbortSignal.timeout(45000), redirect: 'manual'
-    });
-    if (!remote.ok) throw new Failure(502, 'upstream_error', remote.status === 429 ? 'OpenAI 잔액이나 사용 한도를 확인해 주세요. 자동 재실행하지 않았습니다.' : 'GPT 호출에 실패했습니다. API 키 권한과 모델 이용 가능 여부를 확인해 주세요.');
-    payload = await remote.json();
-    const result = (payload.output || []).filter(item => item.type === 'message').flatMap(item => item.content || []).filter(item => item.type === 'output_text').map(item => item.text).join('\n').trim();
-    if (payload.status !== 'completed' || !result) throw new Failure(502, 'incomplete', 'GPT가 완성된 결과를 반환하지 않았습니다. 지시를 짧게 나누어 주세요.');
-    const row = { id: task.id, result: result.slice(0, 20000), input_tokens: payload.usage?.input_tokens || 0, output_tokens: payload.usage?.output_tokens || 0 };
-    await env.DB.prepare("UPDATE gpt_jobs SET status = 'done', result = ?, input_tokens = ?, output_tokens = ? WHERE id = ?").bind(row.result, row.input_tokens, row.output_tokens, row.id).run();
-    return json(completed(row), 200, origin);
+    await env.DB.prepare('INSERT INTO gpt_job_providers(id,provider,ai_model) VALUES(?,?,?)').bind(task.id,task.provider,providerModel(task.provider)).run();
+    const answer=await runTextProvider({provider:task.provider,env,instructions:staffInstruction(task.staffId),
+     input:`[업무]\n${task.title}\n\n[지시]\n${task.brief}\n\n[결과 형태]\n${task.output}`,maxOutputTokens:OUTPUT_LIMIT});
+    const row={id:task.id,result:answer.result.slice(0,20000),input_tokens:answer.usage.input_tokens||0,output_tokens:answer.usage.output_tokens||0,provider:task.provider,ai_model:answer.model};
+    await env.DB.prepare("UPDATE gpt_jobs SET status='done',result=?,input_tokens=?,output_tokens=? WHERE id=?").bind(row.result,row.input_tokens,row.output_tokens,row.id).run();
+    return json(completed(row),200,origin);
    } catch (error) {
     await env.DB.prepare("UPDATE gpt_jobs SET status = 'failed' WHERE id = ? AND status = 'reserved'").bind(task.id).run();
     if (error instanceof Failure) throw error;
+    if(error?.message==='upstream_error')throw new Failure(502,'upstream_error','선택한 AI의 인증·잔액·사용 한도를 확인해 주세요. 자동 재실행하지 않았습니다.');
+    if(error?.message==='incomplete')throw new Failure(502,'incomplete','완성된 텍스트가 반환되지 않았습니다. 자동 재실행하지 않았습니다.');
     throw new Failure(502, 'uncertain', '통신 또는 저장 중 오류가 발생했습니다. 사용료가 발생했을 수 있어 자동 재실행하지 않았습니다.');
    }
   } catch (error) {

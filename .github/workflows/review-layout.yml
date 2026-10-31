@@ -33,6 +33,9 @@ jobs:
       - name: Check and build review files
         run: |
           npm run check
+          node tests/team10-state.cjs
+          python3 -m unittest discover -s tests -p 'hermes_mailbox_client_test.py'
+          python3 -m unittest discover -s tests -p 'phone1_presence_sender_test.py'
           npm run test:gpt-server
           npm run build:pwa
           npm run export

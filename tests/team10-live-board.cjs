@@ -1,0 +1,43 @@
+const a=require('node:assert/strict');
+const {chromium}=require('playwright');
+(async()=>{
+ const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
+ const url=process.env.APP_TEST_URL||'http://localhost:3000';
+ try{
+  const context=await browser.newContext({viewport:{width:1300,height:1000},serviceWorkers:'block'});
+  const page=await context.newPage(),errors=[],external=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  page.on('request',request=>{if(!request.url().startsWith(url))external.push(request.url());});
+  await page.goto(url);
+  a.equal(await page.locator('#db-team10-live [data-staff-id]').count(),10);
+  a.equal(await page.locator('#db-ai-worker option').count(),10);
+  a.equal(await page.evaluate(()=>DongbaekOffice.employees().length),4,'The old room simulation must remain unchanged in this review');
+  await page.locator('[data-assign-staff="9"]').click();
+  a.equal(await page.locator('#db-ai-worker').inputValue(),'9');
+  await page.fill('#db-ai-title','스레드 공지 <img src=x onerror=alert(1)>');
+  await page.fill('#db-ai-brief','기존 텍스트를 기준으로 공지 작성');
+  await page.locator('#db-ai-form button[type=submit]').click();
+  a.match(await page.locator('[data-staff-id="9"] .db-t10-status').textContent(),/업무 준비됨/);
+  a.equal(await page.locator('#db-team10-live img').count(),0,'No user-generated HTML rendering');
+  await page.locator('[data-ai-record]').click();
+  await page.fill('#db-ai-result-text','외부 서비스에서 실제로 받은 문구');
+  await page.locator('#db-ai-result-form button[type=submit]').click();
+  a.match(await page.locator('[data-staff-id="9"] .db-t10-status').textContent(),/결과 기록됨/);
+  a.equal(await page.evaluate(()=>DongbaekAIDesk.jobsSnapshot()[0].hasResult),true);
+  await page.locator('[data-ai-report]').click();
+  a.match(await page.locator('[data-staff-id="9"] .db-t10-status').textContent(),/보고 접수/);
+  a.equal(await page.evaluate(()=>DongbaekOffice.busy()),false,'No invented animation/report by the old simulated scene');
+  a.equal(await page.evaluate(()=>DongbaekTeam10Live.snapshot().find(p=>p.id===9).source),'manual');
+  await page.evaluate(()=>document.dispatchEvent(new CustomEvent('dongbaek-manager-stage',{detail:{workerId:2,status:'running',title:'임채리 자료조사'}})));
+  a.match(await page.locator('[data-staff-id="2"] .db-t10-status').textContent(),/GPT 단계/);
+  await page.evaluate(()=>document.dispatchEvent(new CustomEvent('dongbaek-manager-stage',{detail:{workerId:2,status:'finished',title:'완료'}})));
+  a.match(await page.locator('[data-staff-id="2"] .db-t10-status').textContent(),/배정된 업무 없음/);
+  await page.reload();
+  a.equal(await page.locator('#db-team10-live [data-staff-id]').count(),10);
+  a.match(await page.locator('[data-staff-id="9"] .db-t10-status').textContent(),/보고 접수/);
+  a.deepEqual(errors,[]);
+  a.deepEqual(external,[]);
+  console.log('PASS team10 browser: ten assignees, recorded manual result, real report state, safe text, stage telemetry, reload and no invented simulation');
+  await context.close();
+ }finally{await browser.close();}
+})().catch(error=>{console.error(error);process.exitCode=1;});
