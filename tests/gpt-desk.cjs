@@ -38,7 +38,7 @@ const path = require('node:path');
   async function connect() { await page.locator('#db-gpt-settings').evaluate(node=>node.open=true); await page.fill('#db-gpt-access',secret); await page.click('#db-gpt-connect'); await page.waitForFunction(()=>document.querySelector('#db-gpt-status').textContent.includes('준비 완료')); }
   await connect(); assert.equal(await page.locator('#db-gpt-access').inputValue(),'');
   assert.equal(requests.filter(r=>r.path==='/api/jobs').length,0);
-  await page.selectOption('#db-ai-worker','2'); assert.equal(await page.locator('#db-gpt-run').isVisible(),false);
+  await page.selectOption('#db-ai-worker','2'); assert.equal(await page.locator('#db-gpt-run').isVisible(),true); assert.equal(await page.locator('#db-manager-run').isVisible(),false);
   await page.selectOption('#db-ai-worker','1'); await page.selectOption('#db-ai-service','chatgpt');
   await page.fill('#db-ai-title','GPT 홍보글'); await page.fill('#db-ai-brief','제공된 사실만 사용해서 짧게 작성해주세요.');
   await page.click('#db-gpt-run'); await page.waitForFunction(()=>document.querySelector('#db-gpt-status').textContent.includes('작업 완료'));
