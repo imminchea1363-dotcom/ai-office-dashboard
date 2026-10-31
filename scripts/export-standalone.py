@@ -16,7 +16,7 @@ illustrated = base64.b64encode((root / 'assets/illustrated-team-office.png').rea
 background = base64.b64encode((root / 'assets/office-background.png').read_bytes()).decode('ascii')
 art = base64.b64encode((root / 'assets/office-pixel.png').read_bytes()).decode('ascii')
 html = html.replace('<script src="pixel-mode.js"></script>', '<script>window.DongbaekIllustratedOffice="data:image/png;base64,' + illustrated + '";window.DongbaekBackground="data:image/png;base64,' + background + '";window.DongbaekArtwork="data:image/png;base64,' + art + '";\n' + (root / 'pixel-mode.js').read_text(encoding='utf-8') + '\n</script>')
-for name in ['characters.js','v3.js', 'radio.js','gym-music.js', 'office-music.js', 'pwa.js','docx-export.js','ai-desk.js', 'poster-studio.js','office-manual.js','office-archive.js','office-sns.js','video-library.js', 'video-studio.js', 'video-ai.js','gpt-desk.js']:
+for name in ['characters.js','v3.js', 'radio.js','gym-music.js', 'office-music.js', 'pwa.js','docx-export.js','ai-desk.js', 'poster-studio.js','office-manual.js','office-archive.js','office-sns.js','video-library.js', 'video-studio.js', 'video-ai.js','gpt-desk.js', 'hermes-bridge/dashboard.js']:
     html = html.replace('<script src="' + name + '"></script>', '<script>\n' + (root / name).read_text(encoding='utf-8') + '\n</script>')
 output.write_text(html, encoding='utf-8')
 print(output)

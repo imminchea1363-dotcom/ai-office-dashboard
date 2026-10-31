@@ -34,6 +34,7 @@ jobs:
         run: |
           npm run check
           npm run test:gpt-server
+          npm run test:hermes-bridge
           npm run build:pwa
           npm run export
       - name: Capture screens and run browser checks
