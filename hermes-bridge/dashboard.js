@@ -2,7 +2,7 @@
    No credentials in localStorage, no approvals, no remote commands. */
 (()=>{
 'use strict';
-const LABEL={approval_pending:'대표 승인 대기',needs_review:'수정·재검토 필요',approved_history:'승인 기록 있음',no_active_queue:'진행 중인 승인 업무 없음'};
+const LABEL={approval_pending:'대표 승인 대기',needs_review:'무효·차단 기록 있음 (현재 작업 여부 미확인)',approved_history:'승인 기록 있음',no_active_queue:'진행 중인 승인 업무 없음'};
 const NAMES=['임채리 대리','조사·기획팀 직원','임민채 대리','영상·디자인팀 직원 1','영상·디자인팀 직원 2','SNS 운영팀장','SNS 운영팀 직원','김검수','검수·성과팀 직원','동백매니저'];
 let url='',token='',timer=null,last=null;
 function el(tag,text=''){const n=document.createElement(tag);n.textContent=text;return n;}
@@ -10,7 +10,7 @@ const box=el('section');box.id='dongbaeg-hermes-status';box.style.cssText='posit
 const show=el('button','Hermes 실제 업무 상태');show.type='button';show.style.cssText='padding:10px 14px;background:#336b4c;color:white;border:0;border-radius:9px;cursor:pointer';
 const panel=el('div');panel.hidden=true;panel.style.cssText='background:#fff;border:1px solid #d9e4d2;border-radius:10px;padding:14px;max-height:75vh;overflow:auto;box-shadow:0 3px 18px #0003;margin-bottom:8px';
 const title=el('h3','Hermes 실제 승인 업무 현황');title.style.cssText='margin:0;font-size:16px';
-const note=el('p','화면 속 직원 애니메이션과는 별도의 실제 승인 기록입니다.');note.style.cssText='font-size:11px;color:#66786c;margin:3px 0 9px';
+const note=el('p','화면 속 직원 애니메이션과는 별도의 승인 기록입니다. 무효 기록은 현재 진행 중인 업무를 뜻하지 않습니다.');note.style.cssText='font-size:11px;color:#66786c;margin:3px 0 9px';
 const status=el('p','미연결 · 확인된 업무 상태 없음');status.setAttribute('role','status');status.style.cssText='font-size:12px;background:#f2f5ed;padding:7px;border-radius:6px';
 const roster=el('div');
 const fileLabel=el('label','휴대폰에서 내보낸 상태 JSON 선택');fileLabel.style.cssText='display:block;margin:10px 0 2px;font-weight:600';
